@@ -16,9 +16,8 @@ export function wobblyLine(x1: number, y1: number, x2: number, y2: number, rng: 
   return `${d} L${f(x2)},${f(y2)}`
 }
 
-/** Hand-drawn closed circle: 16-gon with radius jitter of ±amp. */
-export function wobblyCircle(cx: number, cy: number, r: number, rng: () => number, amp = 1.2): string {
-  const n = 16
+/** Hand-drawn closed circle: n-gon (16 by default) with radius jitter of ±amp. */
+export function wobblyCircle(cx: number, cy: number, r: number, rng: () => number, amp = 1.2, n = 16): string {
   const pts = Array.from({ length: n }, (_, i) => {
     const a = (i / n) * Math.PI * 2
     const rr = r + (rng() * 2 - 1) * amp

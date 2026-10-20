@@ -6,6 +6,7 @@ import { play } from '../sound'
 import { Notebook as Khata } from '../bench/items'
 import { ResultLayer } from '../games/Result'
 import * as placeholder from '../games/placeholders'
+import * as Cricket from '../cricket/Cricket'
 import type { GameId, GameSlot } from '../games/types'
 
 type Props = { saved: Saved; setSaved: Dispatch<SetStateAction<Saved>>; onClose: () => void }
@@ -18,7 +19,7 @@ type View = 'cover' | 'index' | GameId
  * The game SVG is what gets shared (svgToPng): every <text> needs an explicit fontFamily, and CSS classes don't reach the image.
  */
 export const games: Record<GameId, GameSlot> = {
-  cricket: placeholder.cricket,
+  cricket: { W: Cricket.W, H: Cricket.H, landscape: true, Game: Cricket.Cricket },
   football: placeholder.football,
   dotbox: placeholder.dotbox,
 }

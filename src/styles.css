@@ -61,6 +61,8 @@
   --t-quick: 140ms;
   --t-wiggle: 520ms;
   --t-zoom: 420ms;
+  --t-lid: 450ms; /* Cricket LID_MS */
+  --lid: #140c07; /* closed eyes: warm near-black */
 }
 
 html, body, #root { margin: 0; height: 100%; }
@@ -315,6 +317,74 @@ body {
 .result-msg:empty { visibility: hidden; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
+/* Cricket: setup and toss card over the spread, the ink drawing in, the closed eyelids. */
+.ck-setup { position: absolute; inset: 0; display: grid; place-items: center; padding: 12px; box-sizing: border-box; }
+.ck-panel {
+  box-sizing: border-box;
+  width: min(100%, 22rem);
+  max-height: 100%;
+  overflow: auto;
+  padding: 16px 20px 20px;
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  filter: var(--shadow-rest);
+}
+.ck-panel p { margin: 0; font-size: 1.15rem; line-height: 1.4; }
+.ck-title { margin: 0; font: 2.75rem/1.1 'Galada', 'Atma', sans-serif; color: var(--ink); }
+.ck-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.ck-panel .ck-note { font-size: 1rem; color: var(--ink-off); }
+.btn[aria-pressed='true'] { background: var(--label); box-shadow: inset 0 0 0 2px var(--ink); text-decoration: underline; text-underline-offset: 0.2em; }
+
+.ck-draw { stroke-dasharray: 1; animation: ck-draw 260ms ease-out backwards; }
+@keyframes ck-draw { from { stroke-dashoffset: 1; } }
+.ck-write { animation: fade 300ms ease-out backwards; }
+.ck-dot { transform-box: fill-box; transform-origin: center; animation: ck-dot 220ms ease-out; }
+@keyframes ck-dot { from { scale: 2.2; opacity: 0; } }
+.ck-flash { animation: ck-flash 500ms ease-in-out 3; }
+@keyframes ck-flash { 50% { opacity: 0.45; } }
+.ck-shout { animation: fade 160ms ease-out; }
+.ck-flick { touch-action: none; cursor: grab; }
+svg:has(.ck-flick) { touch-action: none; }
+
+/* Two lids meet in the middle; everything under them is dark, the cursor is gone. */
+.ck-lids { position: absolute; inset: 0; cursor: none; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.ck-lids::before, .ck-lids::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50.5%;
+  background: var(--lid);
+  animation: ck-lid var(--t-lid) ease-in;
+}
+.ck-lids::before { top: 0; --from: -100%; }
+.ck-lids::after { bottom: 0; --from: 100%; }
+.ck-lids[data-opening]::before, .ck-lids[data-opening]::after { animation: ck-lid-open var(--t-lid) ease-out forwards; }
+@keyframes ck-lid { from { translate: 0 var(--from); } }
+@keyframes ck-lid-open { to { translate: 0 var(--from); } }
+.ck-lids-say {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 16px;
+  color: var(--paper);
+  text-align: center;
+  font-size: clamp(1rem, 4cqmin, 1.5rem);
+  pointer-events: none;
+  animation: fade var(--t-lid) ease-in;
+}
+.ck-lids-say p { margin: 0; }
+.ck-lids-shout { font: clamp(2rem, 11cqmin, 4rem)/1.2 'Galada', 'Atma', sans-serif; }
+.ck-lids[data-opening] .ck-lids-say { opacity: 0; }
+
 @media (min-width: 720px) {
   .screen { --bench-w: min(100vw - 32px, (100dvh - 96px) * 0.75); }
   .bar { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
@@ -326,4 +396,5 @@ body {
   .wiggle { animation: none; }
   .zoom, .nb-col { transition: none; }
   .nb::backdrop, .zoom-layer { animation: none; }
+  .ck-draw, .ck-write, .ck-dot, .ck-flash, .ck-shout, .ck-lids::before, .ck-lids::after, .ck-lids-say { animation: none; }
 }
