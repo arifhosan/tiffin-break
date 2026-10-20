@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { shareOrDownload } from './share'
+import { rootVarNames, shareOrDownload, varsRule } from './share'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -35,4 +35,16 @@ it('downloads on desktop, or when share fails', async () => {
   expect(await shareOrDownload(png, 'f.png', 't')).toBe('downloaded')
   a = env(true)
   expect(await shareOrDownload(png, 'f.png', 't')).toBe('downloaded')
+})
+
+it('turns the :root tokens into one rule for the exported svg', () => {
+  const sheets = [
+    { cssRules: [{ selectorText: ':root', style: ['--ink', '--paper', 'color'] }, { selectorText: 'body', style: ['--nope'] }] },
+    { get cssRules(): never { throw new DOMException('cross-origin', 'SecurityError') } },
+    { cssRules: [{ selectorText: ':root', style: ['--ink', '--rule'] }, {}] },
+  ]
+  const names = rootVarNames(sheets)
+  expect(names).toEqual(['--ink', '--paper', '--rule'])
+  const vals: Record<string, string> = { '--ink': ' #1d3fa0', '--paper': '#fdfcf6', '--rule': '#b9d2ec ' }
+  expect(varsRule(names, (n) => vals[n])).toBe('svg{--ink:#1d3fa0;--paper:#fdfcf6;--rule:#b9d2ec}')
 })

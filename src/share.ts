@@ -23,11 +23,28 @@ const fontFaces = () =>
     }),
   ).then((f) => f.join(''), (e) => { fontCss = undefined; throw e }))
 
-const cssVars = () => {
-  const cs = getComputedStyle(document.documentElement)
-  return Array.from(cs).filter((p) => p.startsWith('--')).map((p) => `${p}:${cs.getPropertyValue(p)}`).join(';')
+type Sheet = { readonly cssRules: ArrayLike<{ selectorText?: string; style?: ArrayLike<string> }> }
+
+/** Custom properties declared in `:root` rules. Computed-style enumeration would be shorter, but Safari doesn't list custom properties there. */
+export function rootVarNames(sheets: ArrayLike<Sheet>): string[] {
+  const names = new Set<string>()
+  for (const sheet of Array.from(sheets)) {
+    let rules
+    try { rules = Array.from(sheet.cssRules) } catch { continue } // cross-origin sheet
+    for (const r of rules)
+      if (r.selectorText === ':root' && r.style) for (const p of Array.from(r.style)) if (p.startsWith('--')) names.add(p)
+  }
+  return [...names]
 }
 
+/** The token values as one rule for the cloned <svg>, so `fill="var(--paper)"` still resolves inside the image. */
+export const varsRule = (names: string[], value: (name: string) => string): string =>
+  `svg{${names.map((n) => `${n}:${value(n).trim()}`).join(';')}}`
+
+/**
+ * Clones a game SVG into a PNG. Only what is inside the SVG reaches the image: every <text> needs an explicit
+ * fontFamily attribute (Atma, Galada or Patrick Hand), and CSS classes from styles.css don't apply; tokens via var() do.
+ */
 export async function svgToPng(svg: SVGSVGElement, scale = 2): Promise<Blob> {
   const { width, height } = svg.viewBox.baseVal
   const clone = svg.cloneNode(true) as SVGSVGElement
@@ -36,7 +53,8 @@ export async function svgToPng(svg: SVGSVGElement, scale = 2): Promise<Blob> {
   clone.setAttribute('height', String(height * scale))
   clone.removeAttribute('style')
   const style = document.createElementNS('http://www.w3.org/2000/svg', 'style')
-  style.textContent = `${await fontFaces()}svg{${cssVars()}}`
+  const root = getComputedStyle(document.documentElement)
+  style.textContent = (await fontFaces()) + varsRule(rootVarNames(document.styleSheets as unknown as ArrayLike<Sheet>), (n) => root.getPropertyValue(n))
   clone.prepend(style)
 
   const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml' }))
