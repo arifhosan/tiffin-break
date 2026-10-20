@@ -9,6 +9,13 @@
   --paper: #fdfcf6;
   --rule: #b9d2ec;
   --danger: #a32118;
+  --margin: #e48681; /* the red margin line of a ruled page */
+  --stamp: #a32118;
+  --ink-off: #6b665c; /* a not-yet-written index entry */
+  --scrim: rgba(20, 10, 4, 0.78);
+  --paper-veil: rgba(253, 252, 246, 0.85); /* behind the stamp, so ink under it doesn't fight the shout */
+  --hover-on-kraft: rgba(255, 255, 255, 0.06);
+  --hover-on-label: rgba(29, 63, 160, 0.08);
 
   /* bench wood */
   --wood: #7a4b2a;
@@ -53,6 +60,7 @@
 
   --t-quick: 140ms;
   --t-wiggle: 520ms;
+  --t-zoom: 420ms;
 }
 
 html, body, #root { margin: 0; height: 100%; }
@@ -143,7 +151,160 @@ body {
 .row-btn.danger:hover { box-shadow: inset 0 0 0 1px var(--danger); }
 .close { margin-top: 20px; padding: 8px 20px; border: none; background: var(--ink); color: var(--paper); }
 .close:hover { background: var(--ink-dark); }
-.placeholder { margin: auto; }
+.btn {
+  font: inherit;
+  font-size: 1.05rem;
+  min-height: 44px;
+  padding: 6px 16px;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+.btn:hover { background: var(--label); box-shadow: inset 0 0 0 1px var(--ink); }
+.btn:active { translate: 0 1px; }
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn.primary:hover { background: var(--ink-dark); }
+.btn[aria-busy='true'] { cursor: progress; }
+.btn.on-dark:focus-visible { outline-color: var(--focus-on-wood); }
+
+/* Notebook: a full-screen modal over the bench, which fades back behind the scrim. */
+.nb {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: transparent;
+  color: var(--ink-black);
+  font-family: inherit;
+}
+.nb::backdrop { background: var(--scrim); animation: fade var(--t-zoom) ease-out; }
+@keyframes fade { from { opacity: 0; } }
+.nb-col {
+  --page-w: min(100vw - 32px, (100dvh - 150px) * 0.76);
+  box-sizing: border-box;
+  height: 100%;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: opacity var(--t-zoom) ease-out;
+}
+.nb[data-game] .nb-col { opacity: 0.35; }
+.nb[data-game] .nb-col > .btn { visibility: hidden; }
+.nb-page { position: relative; flex: none; width: var(--page-w); aspect-ratio: 220 / 290; }
+
+.cover svg { position: absolute; inset: 0; width: 100%; height: 100%; filter: var(--shadow-rest); }
+.cover-open, .cover-label { position: absolute; padding: 0; border: 0; background: transparent; color: var(--focus-on-wood); cursor: pointer; }
+/* ring = currentColor plus an ink halo, so it reads on the kraft, the white label and the dark floor alike */
+.cover-open:focus-visible, .cover-label:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; box-shadow: 0 0 0 7px var(--ink); }
+.cover-open { inset: 0; border-radius: 3px; }
+.cover-open:hover { background: var(--hover-on-kraft); }
+/* the white label in the khata art: x -60..76, y -34..62 of the -110 -145 220 290 box */
+.cover-label { left: 22.7%; top: 38.3%; width: 61.8%; height: 33.1%; border-radius: 4px; }
+.cover-label:hover { background: var(--hover-on-label); }
+.nb-hint { margin: 0; max-width: var(--page-w); color: var(--paper); text-align: center; line-height: 1.4; }
+.name-form { width: var(--page-w); display: grid; gap: 6px; color: var(--paper); }
+.name-row { display: flex; gap: 8px; }
+.name-row input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 4px 12px;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  background: var(--label);
+  color: var(--ink);
+  font: 1.25rem 'Patrick Hand', 'Atma', sans-serif;
+}
+.name-row input:focus-visible { outline-color: var(--focus-on-wood); }
+.name-row .btn:focus-visible { outline-color: var(--focus-on-wood); }
+
+/* The index: a ruled page with a red margin, entries written on the lines. */
+.page {
+  --rule-gap: max(44px, var(--page-w) / 8);
+  box-sizing: border-box;
+  padding: 0 16px 0 calc(var(--rule-gap) + 12px);
+  border-radius: 3px;
+  background:
+    linear-gradient(90deg, transparent var(--rule-gap), var(--margin) 0 calc(var(--rule-gap) + 1.5px), transparent 0),
+    repeating-linear-gradient(transparent 0 calc(var(--rule-gap) - 1px), var(--rule) 0 var(--rule-gap)),
+    var(--paper);
+  filter: var(--shadow-rest);
+  font-size: calc(var(--rule-gap) * 0.46);
+  color: var(--ink);
+}
+.index-title { margin: 0; font: 2.5em/calc(var(--rule-gap) * 2) 'Galada', 'Atma', sans-serif; color: var(--ink); }
+.page nav { display: grid; }
+.entry {
+  height: var(--rule-gap);
+  padding: 0 4px calc(var(--rule-gap) * 0.12);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.entry:hover:not(:disabled) { color: var(--ink-dark); text-decoration: underline wavy; text-underline-offset: 0.2em; }
+.entry:disabled { color: var(--ink-off); cursor: default; }
+.best { font-size: 0.8em; white-space: nowrap; }
+
+/* The zoomed game page: about 90% of the window, below the back control. A landscape spread turns on a portrait screen. */
+.zoom {
+  --avail-h: calc(100dvh - 88px);
+  position: fixed;
+  left: 50%;
+  top: calc(50% + 36px);
+  width: min(92vw, var(--avail-h) * var(--ar));
+  aspect-ratio: var(--ar);
+  transform: translate(-50%, -50%);
+  container-type: size;
+  filter: var(--shadow-lifted);
+  transition: translate var(--t-zoom) ease-out, scale var(--t-zoom) ease-out, rotate var(--t-zoom) ease-out, opacity var(--t-zoom) ease-out;
+}
+@media (orientation: portrait) {
+  .zoom[data-landscape] { top: calc(50% + 36px); width: min(var(--avail-h), 92vw * var(--ar)); transform: translate(-50%, -50%) rotate(90deg); }
+}
+.back { position: fixed; top: 16px; left: 16px; z-index: 1; }
+
+/* Result: a rubber stamp over the finished page, then the three choices. */
+.result {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: min(6cqh, 32px);
+}
+.stamp {
+  margin: 0;
+  padding: 0.05em 0.4em;
+  border: 0.12em double var(--stamp);
+  border-radius: 0.12em;
+  background: var(--paper-veil);
+  color: var(--stamp);
+  font: min(13cqw, 20cqh, 6rem)/1.25 'Galada', 'Atma', sans-serif;
+  rotate: -7deg;
+}
+.result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 
 @media (min-width: 720px) {
   .screen { --bench-w: min(100vw - 32px, (100dvh - 96px) * 0.75); }
@@ -154,4 +315,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .item .art { transition: none; }
   .wiggle { animation: none; }
+  .zoom, .nb-col { transition: none; }
+  .nb::backdrop { animation: none; }
 }

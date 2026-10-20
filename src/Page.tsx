@@ -11,7 +11,7 @@ export const Page = forwardRef<SVGSVGElement, { width: number; height: number; c
         {ys.map((y) => (
           <line key={y} x1={0} x2={width} y1={y} y2={y} stroke="var(--rule)" strokeWidth={1} />
         ))}
-        <line x1={36} x2={36} y1={0} y2={height} stroke="#d9534f" strokeWidth={1.5} opacity={0.7} />
+        <line x1={36} x2={36} y1={0} y2={height} stroke="var(--margin)" strokeWidth={1.5} />
         {children}
       </svg>
     )

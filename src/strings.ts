@@ -33,7 +33,16 @@ export const strings = {
     carveYear: '২০১৩',
     carveInitial: 'স',
   },
-  cover: { name: 'নাম', class: 'শ্রেণি', roll: 'রোল', askName: 'তোমার নাম লেখো', editName: 'নাম বদলাও' },
+  cover: {
+    name: 'নাম',
+    class: 'শ্রেণি',
+    roll: 'রোল',
+    askName: 'তোমার নাম লেখো',
+    editName: 'নাম বদলাও',
+    save: 'লিখে রাখো',
+    open: 'খাতা খোলো',
+    hint: 'খুলতে মলাটে ছোঁও, নাম বদলাতে লেবেলে।',
+  },
   index: {
     title: 'সূচিপত্র',
     cricket: '১. খাতায় ক্রিকেট',
@@ -42,8 +51,10 @@ export const strings = {
     soon: '৪. শীঘ্রই আসছে…',
     best: 'সেরা',
   },
+  game: { cricket: 'খাতায় ক্রিকেট', football: 'খাতায় ফুটবল', dotbox: 'ডট বক্স' },
   shout: { six: 'ছক্কা!', out: 'আউট!', goal: 'গোল!', end: 'টিফিন শেষ!' },
-  notebookSoon: 'খাতার ভেতরটা শীঘ্রই আসছে',
+  // Temporary game pages until Tasks 11-13 mount the games.
+  soonGame: 'খেলাটা এই পাতায় আসছে',
   buttons: { toBench: 'বেঞ্চে ফেরো', share: 'শেয়ার', again: 'আবার খেলো', toIndex: 'সূচিপত্রে ফেরো', close: 'বন্ধ করো' },
   settings: {
     title: 'সেটিংস',
