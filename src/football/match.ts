@@ -1,9 +1,9 @@
 import { dist, other, type Point, type Side } from '../geom'
 import { gaussian } from '../rng'
-import { H, W, validPlacement, type Dot, type PassResult } from './rules'
+import { H, MAX_LEN, W, validPlacement, type Dot, type PassResult } from './rules'
 
 export const DOTS_PER_TEAM = 6
-export const MAX_LINES = 3
+export const MAX_LINES = 5
 export type Target = 1 | 3 | 5
 export type Trail = { from: Point; to: Point; team: Side; ray?: { from: Point; to: Point } }
 export type FootballMatch = {
@@ -30,10 +30,11 @@ export function newFootballMatch(target: Target, kickoff: Side): FootballMatch {
 
 export function place(m: FootballMatch, x: number, y: number): FootballMatch {
   if (m.phase !== 'placement') throw new Error('not in placement')
-  if (!validPlacement(m.dots, { x, y })) throw new Error('invalid placement')
   const team = m.placingTurn
-  const id = `${team}-${m.dots.filter((d) => d.team === team).length}`
-  const dots = [...m.dots, { id, team, x, y }]
+  const n = m.dots.filter((d) => d.team === team).length
+  const keeper = n === 0 // each side's first dot is its goalkeeper
+  if (!validPlacement(m.dots, { x, y }, keeper ? team : undefined)) throw new Error('invalid placement')
+  const dots = [...m.dots, { id: `${team}-${n}`, team, x, y, ...(keeper && { keeper: true as const }) }]
   const next = { ...m, dots, placingTurn: other(team) }
   return dots.length < DOTS_PER_TEAM * 2 ? next : { ...next, phase: 'play', possession: m.kickoff, ball: { ...CENTRE, dotId: null }, lines: 0 }
 }
@@ -46,6 +47,10 @@ export function applyPass(m: FootballMatch, from: Point, to: Point, r: PassResul
   const base = { ...m, trail }
   switch (r.kind) {
     case 'goal': {
+      if (lines <= 2) { // lines 1-2 cannot score: the defending keeper saves it and starts again
+        const keeper = m.dots.find((d) => d.team === other(r.scorer) && d.keeper)!
+        return { ...base, ball: { x: keeper.x, y: keeper.y, dotId: keeper.id }, possession: keeper.team, lines: 0 }
+      }
       const score = { ...m.score, [r.scorer]: m.score[r.scorer] + 1 }
       return {
         ...base, score, phase: score[r.scorer] >= m.target ? 'done' : 'play',
@@ -71,5 +76,5 @@ export function footballWinner(m: FootballMatch): Side | null {
 }
 
 export function applyWobble(rng: () => number, angle: number, length: number): { angle: number; length: number } {
-  return { angle: angle + gaussian(rng, 0.07), length: length * (1 + gaussian(rng, 0.08)) }
+  return { angle: angle + gaussian(rng, 0.07), length: Math.min(length * (1 + gaussian(rng, 0.08)), MAX_LEN * 1.08) }
 }

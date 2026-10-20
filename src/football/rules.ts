@@ -10,8 +10,10 @@ export const DBOX = { depth: 80, y0: 150, y1: 350 } as const
 export const MIN_GAP = 30
 export const EDGE = 10
 export const THROW_IN = 10
+export const MAX_LEN = 133 // a third of the pitch: no line can cross it alone, so no goal from the kick-off
 
-export type Dot = { id: string; team: Side; x: number; y: number }
+// keeper: the side's first placement, inside its own D-box (you defend x = 0, cpu defends x = W).
+export type Dot = { id: string; team: Side; x: number; y: number; keeper?: true }
 export type PassResult = (
   | { kind: 'complete'; to: Dot }
   | { kind: 'intercepted'; by: Dot; at: Point }
@@ -23,9 +25,13 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 const clampIn = (p: Point): Point => ({ x: clamp(p.x, EDGE, W - EDGE), y: clamp(p.y, EDGE, H - EDGE) })
 const inMouth = (y: number) => y >= MOUTH[0] && y <= MOUTH[1]
 
-export function validPlacement(dots: Dot[], c: { x: number; y: number }): boolean {
+// `keeper`: the side whose goalkeeper this is. It must sit in that side's own D-box; every other dot stays out of both.
+export function validPlacement(dots: Dot[], c: { x: number; y: number }, keeper?: Side): boolean {
   if (c.x < EDGE || c.x > W - EDGE || c.y < EDGE || c.y > H - EDGE) return false
-  if ((c.x <= DBOX.depth || c.x >= W - DBOX.depth) && c.y >= DBOX.y0 && c.y <= DBOX.y1) return false
+  const inY = c.y >= DBOX.y0 && c.y <= DBOX.y1
+  if (keeper) {
+    if (!inY || (keeper === 'you' ? c.x > DBOX.depth : c.x < W - DBOX.depth)) return false
+  } else if ((c.x <= DBOX.depth || c.x >= W - DBOX.depth) && inY) return false
   return dots.every((d) => dist(d, c) >= MIN_GAP)
 }
 
