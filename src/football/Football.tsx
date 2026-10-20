@@ -12,7 +12,7 @@ import { Result, ResultLayer } from '../games/Result'
 import type { GameProps } from '../games/types'
 import { aiPass, aiPlace } from './ai'
 import { applyPass, applyWobble, DOTS_PER_TEAM, footballWinner, newFootballMatch, place, type FootballMatch, type Target, type Trail } from './match'
-import { DBOX, DOT_R, H, MOUTH, W, resolvePass, shotEnd, validPlacement, type Dot } from './rules'
+import { DBOX, DOT_R, H, MAX_LEN, MOUTH, W, resolvePass, shotEnd, validPlacement, type Dot } from './rules'
 
 export { H, W }
 const s = strings.football
@@ -26,27 +26,28 @@ const CPU_MS = 600 // the CPU thinks before passing
 const SHOUT_MS = 1200
 const MIN_DRAG_PX = 8 // shorter is a cancelled drag
 const MAX_DRAG_PX = 120
+const MIN_LEN = 20
 const GRAB = 30 // page units around the ball that start a drag
 const GRAB_PX = 22 // ...but never under 22 screen px on a small screen
 
 type Phase = 'setup' | 'toss' | 'cpuToss' | 'play' | 'done'
 type Step = 'draw' | 'place' | 'cpuPlace' | 'aim' | 'cpu' | 'pass' | 'shout' | 'done'
-type Kind = 'complete' | 'intercepted' | 'goal' | 'out' | 'handover'
+type Kind = 'complete' | 'intercepted' | 'goal' | 'save' | 'out' | 'handover'
 type Shot = { angle: number; length: number }
 
 /**
  * The slingshot: the line goes opposite the drag. The drag is measured in page units (pointer -> page through the
  * inverse CTM, so a turned spread maps too) and converted to screen px with the CTM's scale (px per unit);
- * 0-120 px -> 60-450 units, linear, clamped. Under 8 px is a cancel.
+ * 0-120 px -> 20-133 units, linear, clamped. Under 8 px is a cancel.
  */
 export function aim(drag: Point, scale: number): Shot | null {
   const px = Math.hypot(drag.x, drag.y) * scale
   if (px < MIN_DRAG_PX) return null
-  return { angle: Math.atan2(-drag.y, -drag.x), length: 60 + (390 * Math.min(px, MAX_DRAG_PX)) / MAX_DRAG_PX }
+  return { angle: Math.atan2(-drag.y, -drag.x), length: MIN_LEN + ((MAX_LEN - MIN_LEN) * Math.min(px, MAX_DRAG_PX)) / MAX_DRAG_PX }
 }
 
 /** The tally next to the ball: the line about to be drawn by the side in possession. */
-export const tally = (lines: number): string => s.tally[Math.min(lines, 2)]
+export const tally = (lines: number): string => s.tally[Math.min(lines, 4)]
 
 const inkOf = (t: Side) => (t === 'you' ? 'var(--ink)' : 'var(--ink-black)')
 const halo = { stroke: 'var(--paper)', strokeWidth: 6, strokeLinejoin: 'round', paintOrder: 'stroke' } as const
@@ -97,6 +98,7 @@ const Players = memo(function Players({ dots }: { dots: Dot[] }) {
         const r = makeRng(1000 + i)
         return (
           <g key={d.id} className="ck-dot" data-id={d.id} data-x={d.x.toFixed(1)} data-y={d.y.toFixed(1)}>
+            {d.keeper && <path d={wobblyCircle(d.x, d.y, DOT_R + 5, r, 0.8, 16)} fill="none" stroke={inkOf(d.team)} strokeWidth={1.6} />}
             {d.team === 'you' ? (
               <path d={wobblyCircle(d.x, d.y, DOT_R, r, 0.8, 14)} fill="none" stroke={inkOf('you')} strokeWidth={2.2} />
             ) : (
@@ -194,7 +196,8 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
     const to = shotEnd(from, w.angle, w.length)
     const r = resolvePass(cur.dots, cur.ball.dotId, from, to, team)
     const next = applyPass(cur, from, to, r)
-    const k: Kind = r.kind === 'complete' && next.possession !== team ? 'handover' : r.kind
+    const saved = r.kind === 'goal' && next.score[r.scorer] === cur.score[r.scorer]
+    const k: Kind = saved ? 'save' : r.kind === 'complete' && next.possession !== team ? 'handover' : r.kind
     say('pass')
     play('scratch')
     setM(next)
@@ -208,9 +211,10 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
       await wait(reduce ? 0 : LINE_MS)
     }
     setKind(k)
-    const text = k === 'goal' ? strings.shout.goal : k === 'intercepted' ? s.tackle : k === 'out' ? s.throwIn : k === 'handover' ? s.threeDone : null
+    const text = k === 'goal' ? strings.shout.goal : k === 'intercepted' ? s.tackle : k === 'out' ? s.throwIn : k === 'handover' ? s.fiveDone : k === 'save' ? s.save : null
     if (r.kind === 'intercepted') setPulse({ at: r.at, key: n })
-    if (r.kind === 'goal' && next.phase !== 'done') play(r.scorer === 'you' ? 'cheer' : 'groan') // at the end, Result cheers
+    if (saved) play(next.possession === 'you' ? 'cheer' : 'groan') // the keeper's side cheers, the shooter groans
+    if (r.kind === 'goal' && !saved && next.phase !== 'done') play(r.scorer === 'you' ? 'cheer' : 'groan') // at the end, Result cheers
     if (text) {
       setShout(text)
       say('shout', text)
@@ -237,11 +241,12 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
     while (cur.phase === 'placement') {
       let p: Point
       if (cur.placingTurn === 'you') {
-        say('place', `${s.place} ${bn(DOTS_PER_TEAM - cur.dots.filter((d) => d.team === 'you').length)} ${s.people}`)
+        const keeper = !cur.dots.some((d) => d.team === 'you') // the first dot is the goalkeeper
+        say('place', keeper ? s.placeKeeper : `${s.place} ${bn(DOTS_PER_TEAM - cur.dots.filter((d) => d.team === 'you').length)} ${s.people}`)
         p = await new Promise<Point>((r) => (tapWait.current = r))
-        while (!validPlacement(cur.dots, p)) {
+        while (!validPlacement(cur.dots, p, keeper ? 'you' : undefined)) {
           setBad({ at: p, key: n++ })
-          say('place', s.badSpot)
+          say('place', keeper ? s.badKeeper : s.badSpot)
           p = await new Promise<Point>((r) => (tapWait.current = r))
         }
         setBad(null)
