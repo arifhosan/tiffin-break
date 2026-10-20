@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { spinDuration, angleAt, finalAngle, quarterTurnTimes, toPage, toScreen, type Spin } from './spin'
+import { spinDuration, angleAt, finalAngle, quarterTurnTimes, toPage, toScreen, flickSpin, type Spin } from './spin'
 
 const s0: Spin = { power: 0, dir: 1, startAngle: 0 }
 describe('spin', () => {
@@ -24,5 +24,15 @@ describe('spin', () => {
     const r = toScreen(toPage(p, 1.234), 1.234)
     expect(r.x).toBeCloseTo(p.x, 9)
     expect(r.y).toBeCloseTo(p.y, 9)
+  })
+})
+
+describe('flickSpin', () => {
+  it('power from speed (units/ms / 2, clamped), direction from the rotation sense', () => {
+    // At the right of the centre, flicking down (+y) turns the page clockwise on screen (+angle, y down).
+    expect(flickSpin({ x: 100, y: 0 }, { x: 0, y: 1 }, 0.5)).toEqual({ power: 0.5, dir: 1, startAngle: 0.5 })
+    expect(flickSpin({ x: 100, y: 0 }, { x: 0, y: -3 }, 0)).toEqual({ power: 1, dir: -1, startAngle: 0 })
+    expect(flickSpin({ x: 0, y: -100 }, { x: 0.4, y: 0 }, 0).dir).toBe(1) // top, flick right: clockwise
+    expect(flickSpin({ x: 0, y: 0 }, { x: 0, y: 0 }, 0)).toEqual({ power: 0, dir: 1, startAngle: 0 })
   })
 })

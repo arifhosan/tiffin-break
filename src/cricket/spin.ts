@@ -27,3 +27,10 @@ export function quarterTurnTimes(s: Spin): number[] {
 
 export const toPage = (screen: Point, pageAngle: number): Point => rotate(screen, -pageAngle)
 export const toScreen = (page: Point, pageAngle: number): Point => rotate(page, pageAngle)
+
+/** The bowler's flick: from = where it started (relative to the centre), v = its velocity in page units per ms. */
+export const flickSpin = (from: Point, v: Point, startAngle: number): Spin => ({
+  power: Math.min(1, Math.hypot(v.x, v.y) / 2),
+  dir: from.x * v.y - from.y * v.x < 0 ? -1 : 1,
+  startAngle,
+})
