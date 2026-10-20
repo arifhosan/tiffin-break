@@ -203,7 +203,7 @@ body {
   transition: opacity var(--t-zoom) ease-out;
 }
 .nb[data-game] .nb-col { opacity: 0; } /* the index is inert and must not ghost around the zoomed page */
-.nb[data-game]::backdrop { background: rgba(20, 10, 4, 0.94); transition: background var(--t-zoom) ease-out; } /* hides the bench wordmark too */
+.nb[data-game]::backdrop { background: rgb(20, 10, 4); transition: background var(--t-zoom) ease-out; } /* hides the bench wordmark too */
 .nb[data-game] .nb-col > .btn { visibility: hidden; }
 .nb-page { position: relative; flex: none; width: var(--page-w); aspect-ratio: 220 / 290; }
 

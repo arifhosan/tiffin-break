@@ -10,13 +10,15 @@ export default function App() {
   useEffect(() => setMuted(saved.muted), [saved.muted])
   // Debounced: a drag changes `saved` on every pointermove. Flushed when the page is hidden or closed.
   const latest = useRef(saved)
+  const written = useRef(saved) // the state last on disk: flushing an unchanged state would clobber another tab's save
   latest.current = saved
+  const write = () => { if (written.current !== latest.current) save((written.current = latest.current)) }
   useEffect(() => {
-    const t = setTimeout(() => save(saved), 250)
+    const t = setTimeout(write, 250)
     return () => clearTimeout(t)
   }, [saved])
   useEffect(() => {
-    const flush = () => save(latest.current)
+    const flush = write
     const hidden = () => document.visibilityState === 'hidden' && flush()
     addEventListener('pagehide', flush)
     document.addEventListener('visibilitychange', hidden)
