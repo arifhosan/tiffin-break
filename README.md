@@ -12,14 +12,18 @@ A browser game that recreates the pen-and-paper games Bangladeshi students playe
 npm i
 npm run dev      # dev server
 npm test         # unit tests
-npm run build    # type-check and production build into dist/
+npm run build    # type-check and production build into dist/tiffin-break/
 ```
 
 ## Deploy
 
+Served at https://arifhosan.me/tiffin-break/ as a Cloudflare Worker with static assets (`wrangler.jsonc`):
+
 ```
-npx wrangler pages deploy dist --project-name tiffin-break
+npx wrangler deploy
 ```
+
+This builds, uploads `dist/`, and attaches the route `arifhosan.me/tiffin-break*` in the `arifhosan.me` zone. The rest of the domain stays with the portfolio Worker.
 
 ## Notes
 
