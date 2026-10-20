@@ -103,7 +103,7 @@ body {
 .item .art { filter: var(--shadow-rest); transition: transform var(--t-quick) ease-out, filter var(--t-quick) ease-out; }
 .item.lifted .art { transform: scale(1.2); filter: var(--shadow-lifted); }
 .item.lifted .cap { display: none; } /* the pen is uncapped while drawing */
-.item:focus-visible .art { outline: 3px solid currentColor; outline-offset: 5px; }
+.item:focus-visible .art { filter: drop-shadow(0 0 2px var(--focus-on-wood)) drop-shadow(0 0 2px var(--focus-on-wood)) drop-shadow(0 0 1px var(--focus-on-wood)); } /* SVG <g> outlines don't paint in Safari/Firefox */
 .art { transform-box: fill-box; transform-origin: center; }
 .wiggle { animation: wiggle var(--t-wiggle) ease-in-out; }
 @keyframes wiggle {
@@ -202,7 +202,8 @@ body {
   gap: 12px;
   transition: opacity var(--t-zoom) ease-out;
 }
-.nb[data-game] .nb-col { opacity: 0.35; }
+.nb[data-game] .nb-col { opacity: 0; } /* the index is inert and must not ghost around the zoomed page */
+.nb[data-game]::backdrop { background: rgba(20, 10, 4, 0.94); transition: background var(--t-zoom) ease-out; } /* hides the bench wordmark too */
 .nb[data-game] .nb-col > .btn { visibility: hidden; }
 .nb-page { position: relative; flex: none; width: var(--page-w); aspect-ratio: 220 / 290; }
 
