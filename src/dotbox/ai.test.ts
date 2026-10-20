@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { makeRng } from '../rng'
-import { aiEdge } from './ai'
-import { newDotBox, type DotBox, type Edge } from './rules'
+import { aiEdge, completes, giveaway, safe } from './ai'
+import { legalEdges, newDotBox, type DotBox, type Edge } from './rules'
 
 const h = (r: number, c: number): Edge => ({ o: 'h', r, c })
 const v = (r: number, c: number): Edge => ({ o: 'v', r, c })
@@ -26,15 +26,19 @@ describe('aiEdge', () => {
       expect(e).not.toEqual(h(1, 0))
     }
   })
-  it('only unsafe edges: avoids the long chain', () => {
-    // 2x4. Top row: a 4-chain (v(0,*) free). Bottom: every box has exactly 2 sides.
+  it('only unsafe edges: picks a minimal giveaway', () => {
+    // 2x4, no box has 3 sides; every free edge touches a 2-sided box.
     const g = draw(newDotBox(2, 4, 'cpu'), [
-      ...[0, 1, 2, 3].flatMap((c) => [h(0, c), h(1, c)]),
-      h(2, 0), h(2, 1), h(2, 2), h(2, 3), v(1, 3),
+      h(0, 2), h(0, 3), h(1, 0), h(1, 1), h(1, 2), h(1, 3), h(2, 0), h(2, 1), h(2, 2), h(2, 3), v(0, 1),
     ])
+    const free = legalEdges(g)
+    expect(free.some((e) => completes(g, e))).toBe(false) // step 1 n/a
+    expect(free.some((e) => safe(g, e))).toBe(false) // step 2 n/a
+    const gs = free.map((e) => giveaway(g, e))
+    expect(Math.min(...gs)).toBeLessThan(Math.max(...gs)) // choice matters
     for (let s = 0; s < 20; s++) {
       const e = aiEdge(makeRng(s), g)
-      expect(e.o === 'v' && e.r === 0).toBe(false)
+      expect(giveaway(g, e)).toBe(Math.min(...gs))
     }
   })
 })

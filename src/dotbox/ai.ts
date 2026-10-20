@@ -1,11 +1,11 @@
 import { shuffle } from '../rng'
 import { boxesOf, legalEdges, playEdge, sidesOf, type DotBox, type Edge } from './rules'
 
-const completes = (g: DotBox, e: Edge) => boxesOf(g, e).some(([r, c]) => sidesOf(g, r, c) === 3)
-const safe = (g: DotBox, e: Edge) => boxesOf(g, e).every(([r, c]) => sidesOf(g, r, c) < 2)
+export const completes = (g: DotBox, e: Edge) => boxesOf(g, e).some(([r, c]) => sidesOf(g, r, c) === 3)
+export const safe = (g: DotBox, e: Edge) => boxesOf(g, e).every(([r, c]) => sidesOf(g, r, c) < 2)
 
 /** Boxes the opponent claims after e, taking completing edges greedily. */
-function giveaway(g: DotBox, e: Edge): number {
+export function giveaway(g: DotBox, e: Edge): number {
   let s = playEdge(g, e)
   const start = s.score.you + s.score.cpu
   for (;;) {

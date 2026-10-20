@@ -28,7 +28,8 @@ describe('dotbox rules', () => {
   it('winner and tie', () => {
     let g = newDotBox(2, 2, 'you')
     for (const e of legalEdges(g)) if (dotBoxWinner(g) === null) g = playEdge(g, e)
-    expect(dotBoxWinner(g)).not.toBeNull()
+    expect(dotBoxWinner(g)).toBe(g.score.you > g.score.cpu ? 'you' : g.score.you < g.score.cpu ? 'cpu' : 'tie')
+    expect(g.score.you + g.score.cpu).toBe(4)
     expect(() => playEdge(g, h(0, 0))).toThrow()
     expect(dotBoxWinner({ ...g, score: { you: 2, cpu: 2 } })).toBe('tie')
     expect(dotBoxWinner({ ...g, score: { you: 3, cpu: 1 } })).toBe('you')
@@ -44,6 +45,7 @@ describe('dotbox rules', () => {
     const g = newDotBox(2, 2, 'you')
     expect(edgeNear(g, { x: 0.5, y: 0.05 })).toEqual(h(0, 0))
     expect(edgeNear(g, { x: 5, y: 5 })).toBeNull()
-    expect(edgeNear(playEdge(g, h(0, 0)), { x: 0.5, y: 0.05 })).not.toEqual(h(0, 0))
+    expect(edgeNear(playEdge(g, h(0, 0)), { x: 0.5, y: 0.05 })).toBeNull() // only taken edge within 0.5
+    expect(edgeNear(playEdge(g, h(0, 0)), { x: 0.2, y: 0.1 })).toEqual(v(0, 0)) // taken h(0,0) skipped, free v(0,0) within 0.5
   })
 })
