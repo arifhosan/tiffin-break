@@ -1,3 +1,5 @@
+import { normalizeItems } from './bench/model'
+
 export type ItemId = 'notebook' | 'bookBangla' | 'bookMath' | 'bookEnglish' | 'pen' | 'pencil' | 'eraser' | 'geometry' | 'tiffin'
 export type Stroke = { id: string; pts: [number, number][] }
 export type Saved = {
@@ -32,12 +34,15 @@ export const DEFAULT_SAVED: Saved = {
 }
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x)
+const isStroke = (x: unknown): x is Stroke =>
+  isObj(x) && typeof x.id === 'string' && Array.isArray(x.pts) && x.pts.every((q) => Array.isArray(q) && q.length === 2 && num(q[0]) && num(q[1]))
 const num = (x: unknown) => typeof x === 'number' && Number.isFinite(x)
 
 export function load(): Saved {
+  const dflt = () => structuredClone(DEFAULT_SAVED)
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null')
-    if (!isObj(raw) || raw.v !== 1) return DEFAULT_SAVED
+    if (!isObj(raw) || raw.v !== 1) return dflt()
     const items = { ...DEFAULT_SAVED.items }
     if (isObj(raw.items))
       for (const k of Object.keys(items) as ItemId[]) {
@@ -47,16 +52,16 @@ export function load(): Saved {
     const best: Saved['best'] = {}
     if (isObj(raw.best))
       for (const g of ['cricket', 'football', 'dotbox'] as const) if (num(raw.best[g])) best[g] = raw.best[g] as number
-    return {
+    return normalizeItems({
       v: 1,
       items,
-      strokes: Array.isArray(raw.strokes) ? (raw.strokes as Stroke[]) : DEFAULT_SAVED.strokes,
+      strokes: Array.isArray(raw.strokes) ? raw.strokes.filter(isStroke) : [],
       name: typeof raw.name === 'string' ? raw.name : DEFAULT_SAVED.name,
       muted: typeof raw.muted === 'boolean' ? raw.muted : DEFAULT_SAVED.muted,
       best,
-    }
+    })
   } catch {
-    return DEFAULT_SAVED
+    return dflt()
   }
 }
 
