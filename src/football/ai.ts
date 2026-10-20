@@ -3,12 +3,12 @@ import type { FootballMatch } from './match'
 import { H, W, resolvePass, shotEnd, validPlacement, type PassResult } from './rules'
 
 // Six cpu positions each (cpu defends x = 800, attacks x = 0).
-const FORMATIONS: Point[][] = [
+export const FORMATIONS: Point[][] = [
   [{ x: 700, y: 80 }, { x: 700, y: 420 }, { x: 520, y: 250 }, { x: 380, y: 120 }, { x: 380, y: 380 }, { x: 200, y: 250 }],
   [{ x: 600, y: 100 }, { x: 600, y: 250 }, { x: 600, y: 400 }, { x: 350, y: 175 }, { x: 350, y: 325 }, { x: 150, y: 80 }],
-  [{ x: 740, y: 250 }, { x: 500, y: 60 }, { x: 500, y: 440 }, { x: 400, y: 250 }, { x: 250, y: 130 }, { x: 250, y: 370 }],
+  [{ x: 690, y: 250 }, { x: 500, y: 60 }, { x: 500, y: 440 }, { x: 400, y: 250 }, { x: 250, y: 130 }, { x: 250, y: 370 }],
 ]
-const JITTER = 15
+export const JITTER = 15
 
 export function aiPlace(rng: () => number, m: FootballMatch): { x: number; y: number } {
   // The template is re-derived from the first cpu dot so later calls stay on the same one.
