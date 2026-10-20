@@ -197,6 +197,7 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
     say('pass')
     play('scratch')
     setM(next)
+    setKind(null)
     let at: Point = r.ray ? r.ray.from : r.kind === 'complete' ? r.to : r.at // where the line put the ball
     setBall({ x: at.x, y: at.y })
     await wait(reduce ? 0 : LINE_MS)
