@@ -358,8 +358,10 @@ svg:has(.ck-flick) { touch-action: none; }
 @keyframes fb-pulse { 50% { scale: 1.6; opacity: 0.35; } }
 .fb-shake { animation: fb-shake 400ms ease-in-out; }
 @keyframes fb-shake { 20% { translate: -5px 0; } 40% { translate: 5px 0; } 60% { translate: -3px 0; } 80% { translate: 3px 0; } }
-.fb-input { touch-action: none; cursor: crosshair; }
-svg:has(.fb-input) { touch-action: none; }
+.fb-input, .db-input { touch-action: none; cursor: crosshair; }
+svg:has(.fb-input), svg:has(.db-input) { touch-action: none; }
+.db-step { display: flex; align-items: center; gap: 12px; }
+.db-step output { min-width: 2ch; text-align: center; font-size: 1.5rem; }
 
 /* Two lids meet in the middle; everything under them is dark, the cursor is gone. */
 .ck-lids { position: absolute; inset: 0; cursor: none; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -410,3 +412,5 @@ svg:has(.fb-input) { touch-action: none; }
   .fb-pulse, .fb-shake { animation: none; }
   .fb-ball { transition: none; }
 }
+.db-step .btn { font-size: 1.5rem; min-width: 44px; min-height: 44px; }
+.db-step .btn[aria-disabled='true'] { color: var(--ink-off); border-style: dashed; cursor: default; }
