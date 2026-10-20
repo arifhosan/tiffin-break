@@ -264,21 +264,27 @@ body {
 .entry:disabled { color: var(--ink-off); cursor: default; }
 .best { font-size: 0.8em; white-space: nowrap; }
 
-/* The zoomed game page: about 90% of the window, below the back control. A landscape spread turns on a portrait screen. */
-.zoom {
-  --avail-h: calc(100dvh - 88px);
+/* The zoomed game page: about 90% of the window, below the back control. A landscape spread turns on a portrait screen;
+   the Result layer on top stays upright and covers the same box. */
+.stage { display: contents; --zw: min(92vw, (100dvh - 88px) * var(--ar)); }
+.zoom, .zoom-layer {
   position: fixed;
   left: 50%;
   top: calc(50% + 36px);
-  width: min(92vw, var(--avail-h) * var(--ar));
-  aspect-ratio: var(--ar);
+  width: var(--zw);
+  height: calc(var(--zw) / var(--ar));
   transform: translate(-50%, -50%);
-  container-type: size;
+}
+.zoom {
   filter: var(--shadow-lifted);
   transition: translate var(--t-zoom) ease-out, scale var(--t-zoom) ease-out, rotate var(--t-zoom) ease-out, opacity var(--t-zoom) ease-out;
 }
+.zoom-layer { container-type: size; pointer-events: none; animation: fade var(--t-zoom) ease-in; }
+.zoom-layer > * { pointer-events: auto; }
 @media (orientation: portrait) {
-  .zoom[data-landscape] { top: calc(50% + 36px); width: min(var(--avail-h), 92vw * var(--ar)); transform: translate(-50%, -50%) rotate(90deg); }
+  .stage[data-landscape] { --zw: min(100dvh - 88px, 92vw * var(--ar)); }
+  .stage[data-landscape] .zoom { transform: translate(-50%, -50%) rotate(90deg); }
+  .stage[data-landscape] .zoom-layer { width: calc(var(--zw) / var(--ar)); height: var(--zw); }
 }
 .back { position: fixed; top: 16px; left: 16px; z-index: 1; }
 
@@ -305,6 +311,9 @@ body {
   rotate: -7deg;
 }
 .result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.result-msg { margin: 0; min-height: 1.4em; padding: 0 0.4em; border-radius: 4px; background: var(--paper-veil); color: var(--ink); text-align: center; }
+.result-msg:empty { visibility: hidden; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 @media (min-width: 720px) {
   .screen { --bench-w: min(100vw - 32px, (100dvh - 96px) * 0.75); }
@@ -316,5 +325,5 @@ body {
   .item .art { transition: none; }
   .wiggle { animation: none; }
   .zoom, .nb-col { transition: none; }
-  .nb::backdrop { animation: none; }
+  .nb::backdrop, .zoom-layer { animation: none; }
 }

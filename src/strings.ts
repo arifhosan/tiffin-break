@@ -55,6 +55,7 @@ export const strings = {
   shout: { six: 'ছক্কা!', out: 'আউট!', goal: 'গোল!', end: 'টিফিন শেষ!' },
   // Temporary game pages until Tasks 11-13 mount the games.
   soonGame: 'খেলাটা এই পাতায় আসছে',
+  share: { saved: 'ছবিটা ডাউনলোড হয়েছে', failed: 'ছবি বানানো গেল না, আবার চেষ্টা করো' },
   buttons: { toBench: 'বেঞ্চে ফেরো', share: 'শেয়ার', again: 'আবার খেলো', toIndex: 'সূচিপত্রে ফেরো', close: 'বন্ধ করো' },
   settings: {
     title: 'সেটিংস',
