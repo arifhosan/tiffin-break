@@ -1,0 +1,15 @@
+// Cloudflare Workers static assets: `npx wrangler deploy` builds and uploads dist/.
+// The build sits in dist/tiffin-break/, so it is served at arifhosan.me/tiffin-break/
+// ("/tiffin-break" without the slash redirects there).
+// "name" must match the Worker's name in the Cloudflare dashboard.
+{
+  "name": "tiffin-break",
+  "compatibility_date": "2026-10-20",
+  "assets": { "directory": "./dist" },
+  // build here, so a deploy works even when the dashboard's build command is empty
+  "build": { "command": "npm run build" },
+  // only this path on the portfolio's domain; everything else stays with the portfolio Worker
+  "routes": [{ "pattern": "arifhosan.me/tiffin-break*", "zone_name": "arifhosan.me" }],
+  "workers_dev": false,
+  "preview_urls": false
+}

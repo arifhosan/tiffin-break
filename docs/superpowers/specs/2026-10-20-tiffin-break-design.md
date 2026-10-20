@@ -1,6 +1,6 @@
 # Tiffin Break — Design Spec
 
-Date: 2026-10-20 · Status: v2.1, for review (replaces v1 of the same date; builder-check answers folded in)
+Date: 2026-10-20 · Status: v2.2 (football rules revised after play-test), for review (replaces v1 of the same date; builder-check answers folded in)
 
 Labels used below:
 - **[user]** the user decided it.
@@ -161,24 +161,25 @@ A browser game that recreates the pen-and-paper games Bangladeshi students playe
 - **Across the double page** [md]: 800 × 500 page units, landscape. The **halfway line is on the notebook's spine**.
 - You defend the left goal and attack the right.
 - Goal mouths: y ∈ [190, 310] on x = 0 and on x = 800.
-- A D-box, 80 deep × 200 tall (y ∈ [150, 350]), in front of each goal, and **no players are allowed inside it**, so 6 dots can't wall off the goal [call].
+- A D-box, 80 deep × 200 tall (y ∈ [150, 350]), in front of each goal. **Only that side's goalkeeper may stand inside its own D-box**; nobody else may stand in either D-box, so outfield dots can't wall off the goal [call; keeper rule by user, v2.2].
 - Players: **6 per side** [md says 5–10; 6 is the call], drawn as small ink circles (radius 10). Yours are O, the CPU's are X [md marks].
+- **A goalkeeper is mandatory** [user, v2.2]: one of the 6, placed first, inside its own D-box.
 
 ### Placement
-- Players are placed one at a time, alternating, starting with you.
-- A player can go **anywhere on the pitch** outside both D-boxes, at least 10 from the edge and at least 30 from any other player. Own-half-only would make goals almost impossible, because every pass would end deep in your own half [call].
+- Players are placed one at a time, alternating, starting with you. Each side's **first** placement is its goalkeeper and must be inside its own D-box [user, v2.2].
+- Every other player can go **anywhere on the pitch** outside both D-boxes, at least 10 from the edge and at least 30 from any other player. Own-half-only would make goals almost impossible, because every pass would end deep in your own half [call].
 - The CPU places from 3 formation templates, with ±15 jitter.
 - The ball starts on the centre spot (400, 250), and the toss winner kicks off.
 
 ### One pass [call]
 - **Your eyes stay open** while passing (the md's blind flick was not adopted).
-- Drag back from the ball like a slingshot. The direction is opposite to the drag, and a drag of 0–120 px gives a line **60–450** units long [call].
+- Drag back from the ball like a slingshot. The direction is opposite to the drag, and a drag of 0–120 px gives a line **20–133** units long. **The longest line is ⅓ of the centre-to-goal distance (400 / 3 ≈ 133)**, so no possession can reach a goal from the centre in fewer than 3 lines [user, v2.2].
 - Hand wobble is applied: angle + Gaussian(σ = 0.07 rad), and length × (1 + Gaussian(σ = 0.08)). The CPU gets the same wobble.
 
 ### Resolving a pass
 Walk the segment from start to end. The **earliest** of these events wins:
 1. **ট্যাকল (interception):** an opponent player within 12 of the segment. The opponent gets the ball **at the touch point** [md].
-2. **গোল:** the line crosses a goal line inside the mouth. Through your own goal, it counts for the opponent [call].
+2. **গোল:** the line crosses a goal line inside the mouth **on line 3, 4 or 5 of the possession**. Through your own goal, it counts for the opponent [call]. On lines 1–2 (which includes every kick-off and throw-in line) a line entering a goal mouth is **saved**: the defending goalkeeper gets the ball [user, v2.2].
 3. **আউট:** the line leaves the pitch anywhere else → **a throw-in to the opponent from where it went out**, with the ball placed 10 units inside the line [md].
 
 The player the pass starts from is ignored. Your own players along the line are passed over [call].
@@ -189,11 +190,11 @@ If none of those happen, look at the end point:
 
 - Throw-ins and restarts after an interception start the next pass from a point, not from a player.
 
-### 3-pass rule [user, from md]
-- A team gets **at most 3 lines per possession** (পাস ১, পাস ২, শট). A kick-off or throw-in counts as line 1.
-- If the 3rd line doesn't score and the team still has the ball, possession passes to the opponent at **their player nearest to where that line stopped** [call].
+### 5-line rule [user, v2.2; was the 3-pass rule]
+- A team gets **at most 5 lines per possession**. A kick-off or throw-in counts as line 1. Goals can only come on lines 3–5.
+- If the 5th line doesn't score and the team still has the ball, possession passes to the opponent at **their player nearest to where that line stopped** [call].
 - The count resets whenever possession changes.
-- The page shows the count, as ink tally marks (১/৩, ২/৩, শট) next to the ball.
+- The page shows the count, as ink tally marks (১/৫ … ৫/৫) next to the ball.
 
 ### Match
 - First to ১ / ৩ / ৫ goals (default ১) [user options, default call].
@@ -204,7 +205,7 @@ If none of those happen, look at the end point:
   - intercepted or out = −200
 
   Pick the best, breaking ties with the RNG, then apply wobble.
-  - On its 3rd line, the CPU scores only goals and the chance of losing the ball near its own goal, because a completed pass is worthless on the last line [call].
+  - On its 5th line, the CPU scores only goals and the chance of losing the ball near its own goal, because a completed pass is worthless on the last line [call].
 - **Result:** the page keeps every ink line. The score is written at the top of the spread (e.g. "তুমি ৩ – ১ সিপিইউ").
 
 ## 8b. ডট বক্স (Dot Box / box making)
