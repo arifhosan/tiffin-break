@@ -4,13 +4,154 @@
 
 :root {
   --ink: #1d3fa0;
+  --ink-dark: #142d73;
   --ink-black: #222;
   --paper: #fdfcf6;
   --rule: #b9d2ec;
+  --danger: #a32118;
+
+  /* bench wood */
   --wood: #7a4b2a;
+  --wood-light: #a8754a;
+  --wood-grain: #3e2210;
+  --wood-seam: #4a2b15;
+  --wood-scratch: #dcb68a;
+  --focus-on-wood: #ffe27a;
+
+  /* classroom floor: two-tone cement tiles */
   --floor: #3b2a1e;
+  --floor-alt: #45342a;
+  --floor-grout: #2a1d14;
+
+  /* items */
+  --kraft: #b98b5c;
+  --kraft-dark: #8a5f36;
+  --label: #fffef8;
+  --book-pages: #ece4cf;
+  --book-panel: #f6f0dc;
+  --book-bangla: #2d7a4c;
+  --book-math: #a8461f;
+  --book-english: #2a5c9d;
+  --sun: #ef9f2f;
+  --river: #4f8fc9;
+  --shade: rgba(0, 0, 0, 0.18);
+  --pen-barrel: #e8edf2;
+  --plastic-edge: #98a2ad;
+  --pencil: #f1bf2c;
+  --pencil-light: #f8d867;
+  --pencil-dark: #cf9d14;
+  --pencil-wood: #e6c28c;
+  --graphite: #3a3a3a;
+  --rubber: #ee9f97;
+  --eraser: #f5f0e6;
+  --eraser-sleeve: #3d6fb6;
+  --steel-hi: #f5f7f9;
+  --steel: #c2c8ce;
+  --steel-lo: #848d97;
+  --shadow-rest: drop-shadow(1.5px 3px 2px rgba(25, 12, 4, 0.45));
+  --shadow-lifted: drop-shadow(6px 12px 7px rgba(25, 12, 4, 0.5));
+
+  --t-quick: 140ms;
+  --t-wiggle: 520ms;
 }
 
 html, body, #root { margin: 0; height: 100%; }
-body { background: var(--floor); font-family: 'Atma', 'Patrick Hand', sans-serif; color: var(--ink-black); }
+body {
+  font-family: 'Atma', 'Patrick Hand', sans-serif;
+  color: var(--ink-black);
+  background-color: var(--floor);
+  background-image:
+    linear-gradient(var(--floor-grout) 2px, transparent 2px),
+    linear-gradient(90deg, var(--floor-grout) 2px, transparent 2px),
+    conic-gradient(var(--floor) 25%, var(--floor-alt) 0 50%, var(--floor) 0 75%, var(--floor-alt) 0);
+  background-size: 72px 72px, 72px 72px, 144px 144px;
+}
 :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+/* Base = phone. The bench is as wide as fits, and never taller than the window minus the header. */
+.screen {
+  --bench-w: min(100vw - 32px, (100dvh - 128px) * 0.75);
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.bar { width: var(--bench-w); color: var(--paper); }
+.title { margin: 0; font: 2.5rem/1.1 'Galada', 'Atma', sans-serif; }
+.hint { margin: 0; font-size: 1rem; line-height: 1.4; min-height: 2.8em; }
+.bench { display: block; width: var(--bench-w); height: auto; touch-action: none; user-select: none; }
+.bench[data-mode='draw'], .bench[data-mode='erase'] { cursor: crosshair; }
+.bench[data-mode='draw'] .item:not([data-item='pen']):not([data-item='eraser']),
+.bench[data-mode='erase'] .item:not([data-item='pen']):not([data-item='eraser']) { pointer-events: none; }
+
+.item { cursor: grab; outline: none; color: var(--focus-on-wood); } /* color = the focus ring */
+.item .art { filter: var(--shadow-rest); transition: transform var(--t-quick) ease-out, filter var(--t-quick) ease-out; }
+.item.lifted .art { transform: scale(1.2); filter: var(--shadow-lifted); }
+.item.lifted .cap { display: none; } /* the pen is uncapped while drawing */
+.item:focus-visible .art { outline: 3px solid currentColor; outline-offset: 5px; }
+.art { transform-box: fill-box; transform-origin: center; }
+.wiggle { animation: wiggle var(--t-wiggle) ease-in-out; }
+@keyframes wiggle {
+  20% { transform: rotate(-7deg); }
+  45% { transform: rotate(6deg); }
+  70% { transform: rotate(-3deg); }
+}
+
+.sheet {
+  box-sizing: border-box;
+  width: min(100% - 32px, 24rem);
+  padding: 20px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink-black);
+  font-family: inherit;
+}
+.sheet::backdrop { background: rgba(20, 10, 4, 0.55); }
+.sheet h1, .sheet h2 { margin: 0 0 16px; font-size: 1.75rem; color: var(--ink); }
+.sheet h3 { margin: 20px 0 4px; font-size: 1rem; }
+.sheet p { margin: 0; }
+.sheet button {
+  font: inherit;
+  font-size: 1.05rem;
+  min-height: 44px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.row-btn {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+}
+.row-btn:hover { background: var(--label); box-shadow: inset 0 0 0 1px var(--ink); }
+.knob { position: relative; flex: none; width: 44px; height: 24px; border-radius: 999px; background: var(--ink); }
+.knob::after { content: ''; position: absolute; top: 3px; left: 23px; width: 18px; height: 18px; border-radius: 50%; background: var(--paper); }
+.row-btn[aria-checked='false'] .knob { background: var(--steel-lo); }
+.row-btn[aria-checked='false'] .knob::after { left: 3px; }
+.row-btn.danger { justify-content: center; border-color: var(--danger); color: var(--danger); }
+.row-btn.danger:hover { box-shadow: inset 0 0 0 1px var(--danger); }
+.close { margin-top: 20px; padding: 8px 20px; border: none; background: var(--ink); color: var(--paper); }
+.close:hover { background: var(--ink-dark); }
+.placeholder { margin: auto; }
+
+@media (min-width: 720px) {
+  .screen { --bench-w: min(100vw - 32px, (100dvh - 96px) * 0.75); }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  .hint { min-height: 0; text-align: end; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item .art { transition: none; }
+  .wiggle { animation: none; }
+}

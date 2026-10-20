@@ -18,6 +18,20 @@ export const strings = {
     tiffin: 'টিফিন বক্স',
     drawMode: 'কলম হাতে নেওয়া হয়েছে',
     eraseMode: 'রাবার হাতে নেওয়া হয়েছে',
+    moveHint: 'জিনিস টেনে সাজাও। কলম ছুঁলে আঁকা, রাবার ছুঁলে মোছা।',
+    drawHint: 'বেঞ্চে আঁকো। কলম রাখতে আবার কলমে ছোঁও।',
+    eraseHint: 'দাগের ওপর ঘষো। রাবার রাখতে আবার রাবারে ছোঁও।',
+    board: 'বেঞ্চ',
+  },
+  // Printed and scratched art on the bench (decoration).
+  art: {
+    bookBangla: 'বাংলা',
+    bookMath: 'গণিত',
+    bookEnglish: 'English',
+    grade: 'ষষ্ঠ শ্রেণি',
+    carveNames: 'রাফি + মিম',
+    carveYear: '২০১৩',
+    carveInitial: 'স',
   },
   cover: { name: 'নাম', class: 'শ্রেণি', roll: 'রোল', askName: 'তোমার নাম লেখো', editName: 'নাম বদলাও' },
   index: {
@@ -29,7 +43,8 @@ export const strings = {
     best: 'সেরা',
   },
   shout: { six: 'ছক্কা!', out: 'আউট!', goal: 'গোল!', end: 'টিফিন শেষ!' },
-  buttons: { share: 'শেয়ার', again: 'আবার খেলো', toIndex: 'সূচিপত্রে ফেরো', close: 'বন্ধ করো' },
+  notebookSoon: 'খাতার ভেতরটা শীঘ্রই আসছে',
+  buttons: { toBench: 'বেঞ্চে ফেরো', share: 'শেয়ার', again: 'আবার খেলো', toIndex: 'সূচিপত্রে ফেরো', close: 'বন্ধ করো' },
   settings: {
     title: 'সেটিংস',
     soundOn: 'শব্দ চালু',
@@ -37,5 +52,7 @@ export const strings = {
     reset: 'বেঞ্চ নতুন করে সাজাও',
     credits: 'কৃতজ্ঞতা',
     fonts: 'ফন্ট: আত্মা, গালাডা, প্যাট্রিক হ্যান্ড (SIL OFL)',
+    sound: 'শব্দ',
+    confirmReset: 'সব জিনিস আগের জায়গায় ফিরবে, আঁকাও মুছে যাবে। ঠিক আছে?',
   },
 } as const
