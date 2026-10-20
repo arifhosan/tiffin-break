@@ -7,6 +7,7 @@ import { Notebook as Khata } from '../bench/items'
 import { ResultLayer } from '../games/Result'
 import * as placeholder from '../games/placeholders'
 import * as Cricket from '../cricket/Cricket'
+import * as Football from '../football/Football'
 import type { GameId, GameSlot } from '../games/types'
 
 type Props = { saved: Saved; setSaved: Dispatch<SetStateAction<Saved>>; onClose: () => void }
@@ -20,7 +21,7 @@ type View = 'cover' | 'index' | GameId
  */
 export const games: Record<GameId, GameSlot> = {
   cricket: { W: Cricket.W, H: Cricket.H, landscape: true, Game: Cricket.Cricket },
-  football: placeholder.football,
+  football: { W: Football.W, H: Football.H, landscape: true, Game: Football.Football },
   dotbox: placeholder.dotbox,
 }
 const IDS = Object.keys(games) as GameId[]

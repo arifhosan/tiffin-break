@@ -26,5 +26,4 @@ function Placeholder({ id, W, H, name, onExit }: GameProps & { id: GameId; W: nu
 const slot = (id: GameId, W: number, H: number, landscape?: boolean): GameSlot =>
   ({ W, H, landscape, Game: (p) => <Placeholder id={id} W={W} H={H} {...p} /> })
 
-export const football = slot('football', 800, 500, true)
 export const dotbox = slot('dotbox', 600, 800)

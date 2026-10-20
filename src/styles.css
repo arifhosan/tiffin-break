@@ -62,6 +62,7 @@
   --t-wiggle: 520ms;
   --t-zoom: 420ms;
   --t-lid: 450ms; /* Cricket LID_MS */
+  --t-ball: 450ms; /* Football LINE_MS: a pen line draws and the ball glides with it */
   --lid: #140c07; /* closed eyes: warm near-black */
 }
 
@@ -351,6 +352,15 @@ body {
 .ck-flick { touch-action: none; cursor: grab; }
 svg:has(.ck-flick) { touch-action: none; }
 
+/* Football: the ball glides along each pen line, an intercepting player pulses, a bad spot shakes. */
+.fb-ball { transition: transform var(--t-ball) ease-out; }
+.fb-pulse { transform-box: fill-box; transform-origin: center; animation: fb-pulse 400ms ease-in-out 3; }
+@keyframes fb-pulse { 50% { scale: 1.6; opacity: 0.35; } }
+.fb-shake { animation: fb-shake 400ms ease-in-out; }
+@keyframes fb-shake { 20% { translate: -5px 0; } 40% { translate: 5px 0; } 60% { translate: -3px 0; } 80% { translate: 3px 0; } }
+.fb-input { touch-action: none; cursor: crosshair; }
+svg:has(.fb-input) { touch-action: none; }
+
 /* Two lids meet in the middle; everything under them is dark, the cursor is gone. */
 .ck-lids { position: absolute; inset: 0; cursor: none; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .ck-lids::before, .ck-lids::after {
@@ -397,4 +407,6 @@ svg:has(.ck-flick) { touch-action: none; }
   .zoom, .nb-col { transition: none; }
   .nb::backdrop, .zoom-layer { animation: none; }
   .ck-draw, .ck-write, .ck-dot, .ck-flash, .ck-shout, .ck-lids::before, .ck-lids::after, .ck-lids-say { animation: none; }
+  .fb-pulse, .fb-shake { animation: none; }
+  .fb-ball { transition: none; }
 }
