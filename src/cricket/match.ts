@@ -55,8 +55,8 @@ export function applyBall(m: CricketMatch, b: Ball): CricketMatch {
 }
 
 export function cricketResult(m: CricketMatch): null | { winner: Side | 'tie'; by: 'runs' | 'wickets' | null; n: number } {
-  if (!m.done || m.innings.length < 2) return null
   const [a, c] = m.innings
+  if (!m.done || !c) return null
   if (c.runs > a.runs) return { winner: c.batting, by: 'wickets', n: WICKETS[m.overs] - c.wickets }
   if (a.runs > c.runs) return { winner: a.batting, by: 'runs', n: a.runs - c.runs }
   return { winner: 'tie', by: null, n: 0 }
