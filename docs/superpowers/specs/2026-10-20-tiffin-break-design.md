@@ -9,7 +9,7 @@ Labels used below:
 
 ## 1. What and why
 
-A browser game that recreates the pen-and-paper games Bangladeshi students played on the school bench in the early 2010s. In searches in English and Bangla (2026-10-20), we found no online version of these two games as they were played.
+A browser game that recreates the pen-and-paper games Bangladeshi students played on the school bench in the early 2010s. In searches in English and Bangla (2026-10-20), we found no online version of Spin Cricket or Pass Football as they were played. Dot Box exists online, but not in this setting.
 
 - **Goal:** (A) a polished showcase piece and (B) a nostalgia piece people share on Facebook and Messenger. [user]
 - **Audience:** people who were BD school students in the 2010s, who are now gamers and CS students. Not aimed at PUBG/CODM/Free Fire players. [user]
@@ -93,7 +93,7 @@ A browser game that recreates the pen-and-paper games Bangladeshi students playe
   - ৩. ডট বক্স
   - ৪. শীঘ্রই আসছে… (greyed out)
   
-  Your best scores are shown next to the games: the highest cricket innings, and the biggest football win margin [call].
+  Your best scores are shown next to the games: the highest cricket innings, and the biggest football and Dot Box win margins [call].
 - **Tapping a game zooms in** [user]. The bench fades back and the game's page (or double page) smoothly grows and straightens until it fills most of the screen. A back control (← সূচিপত্র) zooms back out to the index, and closing the notebook returns you to the bench [call].
 - **Football's double page:** on a portrait phone, it rotates 90° to fill the screen [call].
 

@@ -2,315 +2,558 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A static browser game: a top-down school-bench hub, Spin Cricket, and Pass Football against the computer, with notebook-page PNG sharing.
+**Goal:** A static browser game with three things:
+- a rearrangeable, drawable school bench that is remembered between visits
+- a notebook with the player's name on it, used as the menu
+- three pen-and-paper games against the computer: Spin Cricket, Pass Football and Dot Box, each shareable as a PNG of the page
 
-**Architecture:** Vite + React 19 + TypeScript SPA. Game rules are pure TS modules (state + move → state) unit-tested with Vitest; the AI only emits moves. React components render SVG and animate with CSS transforms / `stroke-dashoffset`. All randomness comes from one seeded RNG per match.
+**Architecture:**
+- **App:** a Vite + React 19 + TypeScript single-page app.
+- **Game logic:**
+  - Rules, match flow and AI are pure TypeScript modules: state plus a move in, new state out. They are unit-tested with Vitest.
+  - The AI only produces moves.
+  - All randomness comes from one seeded RNG per match.
+- **UI:** React components render SVG and animate with CSS transforms and `stroke-dashoffset`.
+- **Persistence:** one localStorage key.
 
 **Tech Stack:** Vite, React 19, TypeScript, Vitest, plain CSS, Web Audio API, Cloudflare Pages (static).
 
-**Spec:** `docs/superpowers/specs/2026-10-20-tiffin-break-design.md`. Read it before any task; zone tables, constants and rules there are authoritative.
+**Spec:** `docs/superpowers/specs/2026-10-20-tiffin-break-design.md`. Read it before every task. Its tables, constants and rules are authoritative, and the section numbers below (§) refer to it.
 
 ## Global Constraints
 
-- Runtime deps: `react`, `react-dom` only. Dev deps: `vite`, `@vitejs/plugin-react`, `typescript`, `vitest`, `@types/react`, `@types/react-dom`. Nothing else without asking.
-- No backend, router, state library, game engine, analytics, or external network calls at runtime (fonts are self-hosted).
-- Fonts: Patrick Hand (Latin) and Galada (Bangla), SIL OFL, `.woff2` files in `public/fonts/`, credited in settings.
-- All user-visible text lives in `src/strings.ts` (Banglish: English UI, Bangla shouts).
-- All randomness goes through `makeRng(seed)` from `src/rng.ts`; never `Math.random()` in rules or AI.
-- Layout fits 360 px wide; centred, max 480 px wide on desktop. Pointer events (mouse + touch).
-- `prefers-reduced-motion: reduce` → spin and line-draw animations jump to their end state.
-- Tappable things are `<button>` (or `role="button"` + `tabIndex=0`) with accessible names and a visible focus ring.
-- localStorage access is wrapped in try/catch; the game works without it.
-- Node 20+. Commands: `npm test` (vitest run), `npm run dev`, `npm run build`.
+- **Dependencies:**
+  - Runtime: `react` and `react-dom` only.
+  - Dev: `vite`, `@vitejs/plugin-react`, `typescript`, `vitest`, `@types/react`, `@types/react-dom`.
+  - Ask before adding anything else.
+- **No infrastructure:** no backend, router, state library, game engine or analytics, and no runtime network calls except loading the app's own `/fonts/*`.
+- **Fonts:** Atma (Bengali UI), Galada (shouts), Patrick Hand (Latin names). All SIL OFL, `.woff2` in `public/fonts/`, credited in settings.
+- **Text:**
+  - All visible text is Bengali and lives in `src/strings.ts`.
+  - Numbers are shown in Bangla digits via `bn()`.
+  - The only exception is a player name typed in English.
+- **No brand names, logos or NCTB artwork** in any asset.
+- **Randomness:** only through `makeRng(seed)`. Never call `Math.random()` in rules or AI.
+- **Bench:** a 600 × 800 bench-unit SVG scaled to fit the window, surrounded by a classroom-floor pattern. It must work at 360 px wide.
+- **Input:** pointer events only (mouse and touch).
+- **`prefers-reduced-motion: reduce`:** spins, zooms and line drawing jump to their end state, and sounds still play.
+- **Accessibility:** interactive items are `<button>`, or `role="button"` with `tabIndex=0`, with a Bengali `aria-label` and a visible focus ring.
+- **Storage:** everything is under the localStorage key `tb.v1`. Every access goes through `src/storage.ts`, wrapped in try/catch.
+- **Tooling:** Node 20+. `npm test` (vitest run), `npm run dev`, `npm run build`.
 
 ## Review Focus
 
-1. **Football: a line touching an opponent AND crossing the goal mouth** → the earlier event along the segment wins (an interception in front of the goal is not a goal). Test in Task 6.
-2. **Football: the ray after an empty-space stop hits no dot** → falls back to the out rule at the ray's exit point, opponent nearest the exit gets the ball. Test in Task 6.
-3. **Cricket: a tap outside the ground or exactly on a zone boundary** → WIDE for r ≥ 190; a boundary point belongs to the zone starting there (r = 130 is outer, angle 45° is sector 1). Test in Task 3.
-4. **Cricket: the chase passes the target mid-over** → the match ends immediately with "won by N wickets", with no further balls. Equal totals → tie. Test in Task 4.
-5. **Share on a desktop browser without file-share support** → PNG downloads, and the handwriting font is present in the image (not a fallback serif). Manual check in Task 9.
+1. **Blocked or corrupt localStorage:** private mode throws, or `tb.v1` holds `"{oops"` or a partial object → the game loads with defaults, merging any valid fields, and never shows a blank screen. Test in Task 1.
+2. **LBW re-drop that lands on a line again** → it resolves as a plain drop, with no second appeal and no endless loop. Test in Task 5.
+3. **Football: the 3rd line completes a pass but doesn't score** → possession still switches, to the opponent nearest where the line stopped, and the count resets. Test in Task 7.
+4. **Dot Box: one line completes two boxes** → both are claimed, the score goes up by 2, and the same player plays again once. Test in Task 8.
+5. **A name that is empty, only Bengali, or starts with a digit or space** → the Dot Box initial is "Y" or the first Latin letter, upper-cased. **A saved bench item outside the 600 × 800 board** (from an older version or bad data) → it is clamped back inside. Tests in Tasks 8 and 3.
 
 ---
 
-### Task 1: Project scaffold, RNG, strings
+### Task 1: Scaffold, RNG, strings, storage
 
 **Files:**
-- Create: `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `.gitignore` (add `node_modules`, `dist`, `.superpowers/`), `src/main.tsx`, `src/App.tsx`, `src/styles.css`, `src/rng.ts`, `src/strings.ts`, `public/fonts/PatrickHand-Regular.woff2`, `public/fonts/Galada-Regular.woff2`
-- Test: `src/rng.test.ts`
+- Create: `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.tsx`, `src/App.tsx`, `src/styles.css`, `src/rng.ts`, `src/strings.ts`, `src/storage.ts`, `public/fonts/Atma-Regular.woff2`, `public/fonts/Galada-Regular.woff2`, `public/fonts/PatrickHand-Regular.woff2`
+- Modify: `.gitignore` (already has `node_modules`, `dist`, `.superpowers/`)
+- Test: `src/rng.test.ts`, `src/strings.test.ts`, `src/storage.test.ts`
 
 **Interfaces:**
-- Produces: `makeRng(seed: number): () => number` (mulberry32, returns [0,1)); `gaussian(rng: () => number, sigma: number): number` (Box–Muller, mean 0); `strings` (a plain `as const` object); `type Screen = 'bench' | 'cricket' | 'football'` in `App.tsx`.
+- **Produces:**
+  - `makeRng(seed: number): () => number` (mulberry32, returns values in [0,1))
+  - `gaussian(rng: () => number, sigma: number): number`
+  - `shuffle<T>(rng: () => number, xs: T[]): T[]` (Fisher–Yates, returns a copy)
+  - `bn(n: number): string` (Bangla digits; keeps `-` and `.`)
+  - `strings`: a nested `as const` object of every Bengali label
+  - `type ItemId = 'notebook' | 'bookBangla' | 'bookMath' | 'bookEnglish' | 'pen' | 'pencil' | 'eraser' | 'geometry' | 'tiffin'`
+  - `type Stroke = { id: string; pts: [number, number][] }`
+  - `type Saved = { v: 1; items: Record<ItemId, { x: number; y: number; rot: number }>; strokes: Stroke[]; name: string; muted: boolean; best: { cricket?: number; football?: number; dotbox?: number } }`
+  - `DEFAULT_SAVED: Saved` (a messy-desk layout of your choice, inside 600 × 800)
+  - `load(): Saved`
+  - `save(s: Saved): void`
+  - `recordBest(s: Saved, game: 'cricket' | 'football' | 'dotbox', value: number): Saved` (keeps the max)
 
-- [ ] **Step 1:** `git init` is already done. Scaffold with `npm create vite@latest . -- --template react-ts`, delete the template demo files, then `npm i -D vitest`. Add the script `"test": "vitest run"`.
-- [ ] **Step 2:** Download Patrick Hand and Galada `.woff2` (Google Fonts, OFL) into `public/fonts/`. Declare both with `@font-face` in `styles.css`. Set CSS variables `--ink: #1d3fa0`, `--paper: #fdfcf6`, `--rule: #b9d2ec`, `--wood: #7a4b2a`, and a body background.
-- [ ] **Step 3: Write the failing test** `src/rng.test.ts`:
-```ts
-import { makeRng, gaussian } from './rng'
-test('same seed, same sequence', () => {
-  const a = makeRng(42), b = makeRng(42)
-  expect([a(), a(), a()]).toEqual([b(), b(), b()])
-})
-test('values in [0,1)', () => {
-  const r = makeRng(1)
-  for (let i = 0; i < 1000; i++) { const v = r(); expect(v).toBeGreaterThanOrEqual(0); expect(v).toBeLessThan(1) }
-})
-test('gaussian has roughly the right spread', () => {
-  const r = makeRng(7); const xs = Array.from({ length: 5000 }, () => gaussian(r, 2))
-  const mean = xs.reduce((s, x) => s + x, 0) / xs.length
-  const sd = Math.sqrt(xs.reduce((s, x) => s + (x - mean) ** 2, 0) / xs.length)
-  expect(Math.abs(mean)).toBeLessThan(0.1); expect(sd).toBeGreaterThan(1.8); expect(sd).toBeLessThan(2.2)
-})
-```
-- [ ] **Step 4:** Run `npm test` and expect it to FAIL (module not found).
-- [ ] **Step 5:** Implement `src/rng.ts`. Implement `src/strings.ts` with every label used in the spec (bench items, setup options, toss, shouts `six: 'ছক্কা!'`, `out: 'আউট!'`, `goal: 'গোল!'`, `matchOver: 'টিফিন শেষ!'`, result templates, share/play again/back, settings, credits). Implement `App.tsx` with `useState<Screen>('bench')`, rendering placeholder components.
-- [ ] **Step 6:** Run `npm test` and expect PASS. Run `npm run dev` and confirm the page loads with the handwriting font.
-- [ ] **Step 7:** Commit `chore: scaffold vite react app with seeded rng and strings`.
+- [ ] **Step 1: Scaffold.**
+  - Run `npm create vite@latest . -- --template react-ts` in the existing repo and delete the demo files.
+  - Run `npm i -D vitest` and add the script `"test": "vitest run"`.
+  - Download the three fonts (Google Fonts, OFL) as `.woff2` into `public/fonts/`.
+  - In `styles.css`, add `@font-face` rules and the CSS variables `--ink:#1d3fa0; --ink-black:#222; --paper:#fdfcf6; --rule:#b9d2ec; --wood:#7a4b2a; --floor:#3b2a1e`, and set the body background to `var(--floor)`.
+- [ ] **Step 2: Write the failing tests.**
+  - **rng:**
+    - Same seed gives the same sequence.
+    - 1000 values all fall in [0,1).
+    - 5000 values from `gaussian(r, 2)` have a mean whose absolute value is under 0.1, and an SD between 1.8 and 2.2.
+    - `shuffle` keeps the same items (sorted equal) and doesn't mutate its input.
+  - **strings:** `bn(2014) === '২০১৪'`, `bn(-3) === '-৩'`.
+  - **storage** (Review Focus 1):
+    - With a stubbed `localStorage` whose `getItem` throws → `load()` deep-equals `DEFAULT_SAVED`.
+    - `getItem` returns `'{oops'` → `DEFAULT_SAVED`.
+    - It returns `'{"v":1,"name":"Rafi"}'` → `name === 'Rafi'`, and every other field comes from the default.
+    - `save` doesn't throw when `setItem` throws.
+    - Calling `recordBest` with 10 and then 5 leaves `best.cricket === 10`.
+- [ ] **Step 3:** Run `npm test` → FAIL (modules missing).
+- [ ] **Step 4: Implement** `rng.ts`, `strings.ts`, `storage.ts`. `App.tsx` holds `const [saved, setSaved] = useState(load)`, calls `save(saved)` in an effect, and renders `<div>` placeholders for `screen: 'bench' | 'notebook'`.
+- [ ] **Step 5:** Run `npm test` → PASS. Run `npm run dev` → the page loads on the floor colour.
+- [ ] **Step 6:** Commit `chore: scaffold app with seeded rng, bengali strings, storage`.
 
-### Task 2: Ink helpers and Notebook page
+### Task 2: Geometry, ink, ruled page
 
 **Files:**
-- Create: `src/ink.ts`, `src/Notebook.tsx`
-- Test: `src/ink.test.ts`
+- Create: `src/geom.ts`, `src/ink.ts`, `src/Page.tsx`, `src/motion.ts`
+- Test: `src/geom.test.ts`, `src/ink.test.ts`
 
 **Interfaces:**
-- Consumes: `makeRng`.
-- Produces:
-  - `wobblyLine(x1: number, y1: number, x2: number, y2: number, rng: () => number, amp?: number): string`, an SVG path `d`. Default amp is 1.2. It starts exactly at (x1,y1) and ends exactly at (x2,y2), with 3–6 intermediate points offset perpendicular by up to ±amp.
-  - `wobblyCircle(cx: number, cy: number, r: number, rng: () => number, amp?: number): string`, a closed path `d`.
-  - `<Notebook width height children/>`: an `<svg>` with a ruled-paper background (lines every 18 units, red margin line). It forwards `ref` to the `<svg>`.
-
-- [ ] **Step 1: Failing tests:**
-  - `wobblyLine` with the same seed returns the same string.
-  - The path starts with `M0,0` and ends with `100,0` for `wobblyLine(0,0,100,0, makeRng(3))`. Format numbers to 1 decimal place.
-  - The `wobblyCircle` path ends with `Z`.
-- [ ] **Step 2:** Run and expect FAIL.
-- [ ] **Step 3:** Implement `ink.ts` and `Notebook.tsx`.
-- [ ] **Step 4:** Run and expect PASS.
-- [ ] **Step 5:** Commit `feat: hand-drawn ink helpers and notebook page`.
-
-### Task 3: Cricket field, spin physics, landing
-
-**Files:**
-- Create: `src/geom.ts` (`export type Point = { x: number; y: number }`), `src/cricket/rules.ts`
-- Test: `src/cricket/rules.test.ts`
-
-**Interfaces:**
-- Produces:
-  - re-exports `Point` from `src/geom.ts`
-  - `type Outcome = { kind: 'runs'; runs: 0|1|2|3|4|6 } | { kind: 'out'; how: 'bowled'|'caught'|'run out' } | { kind: 'wide' }`
-  - `type Spin = { power: number; dir: 1 | -1; startAngle: number }`
-  - Constants `GROUND_R = 190`, `MID_R = 130`, `INNER_R = 60`, `PITCH = { w: 24, h: 70 }`, `MID_SECTORS: Outcome[]`, `OUTER_SECTORS: Outcome[]` (values from spec §6)
-  - `outcomeAt(p: Point): Outcome`
-  - `spinDuration(s: Spin): number` (seconds)
-  - `angleAt(s: Spin, t: number): number` (radians; clamps t to the duration)
-  - `finalAngle(s: Spin): number`
-  - `quarterTurnTimes(s: Spin): number[]` (seconds at which the page has turned another π/2)
-  - `toPage(screen: Point, pageAngle: number): Point` (rotate by −pageAngle about the origin)
-  - `toScreen(page: Point, pageAngle: number): Point` (the inverse)
-
-- [ ] **Step 1: Failing tests:**
-  - `outcomeAt({x:0,y:0})` → bowled.
-  - `outcomeAt({x:40,y:0})` → 0 runs.
-  - `outcomeAt({x:100,y:1})` → sector 0 of the middle ring → 1 run.
-  - `outcomeAt({x:0,y:160})` → angle 90° → outer sector 2 → 6 runs.
-  - `outcomeAt({x:130,y:0.001})` → outer sector 0 → 4 runs (Review Focus 3).
-  - Angle exactly 45° at r = 100 (`{x:70.71,y:70.72}`) → middle sector 1 → 2 runs.
-  - `outcomeAt({x:190,y:0})` → wide.
-  - `outcomeAt({x:300,y:300})` → wide.
-  - `spinDuration({power:0,dir:1,startAngle:0})` ≈ 1.0, and with power 1 ≈ 2.667 (toBeCloseTo, 3 decimals).
-  - `finalAngle` for power 0 equals `0.75 * 2π` turns (toBeCloseTo).
-  - `angleAt(s, 99) === finalAngle(s)`.
-  - dir −1 mirrors dir 1.
-  - `quarterTurnTimes` for power 0 has length 3 (the third equals the stop time; count with a 1e-9 tolerance) and is strictly increasing.
-  - `toScreen(toPage(p, a), a)` ≈ p.
-- [ ] **Step 2:** Run and expect FAIL.
-- [ ] **Step 3:** Implement. Angle convention: `atan2(y, x)` normalised to [0, 2π), sector `= floor(angle / (π/4))`. Physics: `ω0 = 2π(1.5+2.5p)`, `α = 3π`, `θ(t) = start + dir(ω0 t − ½ α t²)`.
-- [ ] **Step 4:** Run and expect PASS.
-- [ ] **Step 5:** Commit `feat(cricket): field zones, spin physics, landing`.
-
-### Task 4: Cricket match state
-
-**Files:**
-- Create: `src/cricket/match.ts`
-- Test: `src/cricket/match.test.ts`
-
-**Interfaces:**
-- Consumes: `Outcome`, `Point` (Task 3).
-- Produces:
+- **Produces:**
+  - `type Point = { x: number; y: number }`
   - `type Side = 'you' | 'cpu'`
-  - `type Overs = 1 | 2 | 5`
-  - `WICKETS: Record<Overs, number> = {1:2, 2:3, 5:5}`
-  - `type Ball = { outcome: Outcome; at: Point }`
-  - `type Innings = { batting: Side; runs: number; wickets: number; legalBalls: number; balls: Ball[] }`
-  - `type CricketMatch = { overs: Overs; innings: [Innings] | [Innings, Innings]; done: boolean }`
-  - `newCricketMatch(overs: Overs, firstBat: Side): CricketMatch`
-  - `applyBall(m: CricketMatch, ball: Ball): CricketMatch` (pure)
-  - `currentInnings(m): Innings`
-  - `target(m): number | null` (first innings runs + 1, during the chase)
-  - `cricketResult(m): null | { winner: Side | 'tie'; margin: string }` (margin `"by N runs"` / `"by N wickets"` / `""`)
+  - `other(s: Side): Side`
+  - `dist(a: Point, b: Point): number`
+  - `segPointDist(a: Point, b: Point, p: Point): { d: number; t: number }` (t in [0,1] along a→b)
+  - `rotate(p: Point, angle: number): Point` (about the origin)
+  - `wobblyLine(x1, y1, x2, y2, rng, amp = 1.2): string`: a path `d` that starts exactly at (x1,y1) and ends exactly at (x2,y2), with 3–6 perpendicular wobbles of up to ±amp, numbers to 1 decimal
+  - `wobblyCircle(cx, cy, r, rng, amp = 1.2): string` (closed, ends with `Z`)
+  - `<Page width height ref children />`: an `<svg>` with ruled paper (a line every 18 units, red margin line); `ref` is forwarded to the `<svg>`
+  - `useReducedMotion(): boolean`
 
-- [ ] **Step 1: Failing tests:**
-  - A wide adds 1 run and does not increment `legalBalls`.
-  - After 6 legal balls in a 1-over match, a second innings starts with the other side batting.
-  - 2 outs in a 1-over first innings ends it early.
-  - Chase passes the target on ball 3: `done === true`, `cricketResult` → winner is the chaser, margin `"by 2 wickets"` with 0 down. Applying another ball after `done` throws (Review Focus 4).
-  - Equal totals after both innings → `{winner:'tie', margin:''}`.
-  - The defending side wins "by N runs".
-- [ ] **Step 2:** Run and expect FAIL.
+- [ ] **Step 1: Failing tests.**
+  - `segPointDist({x:0,y:0},{x:10,y:0},{x:5,y:3})` → `{d:3, t:0.5}`.
+  - A point beyond the end clamps t to 1.
+  - `rotate({x:1,y:0}, Math.PI/2)` ≈ `{x:0,y:1}`.
+  - `wobblyLine(0,0,100,0, makeRng(3))` starts with `M0,0`, ends with `100,0`, and is the same for the same seed.
+  - `wobblyCircle` output ends with `Z`.
+- [ ] **Step 2:** Run → FAIL.
 - [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run and expect PASS.
-- [ ] **Step 5:** Commit `feat(cricket): match state and result`.
+- [ ] **Step 4:** Run → PASS.
+- [ ] **Step 5:** Commit `feat: geometry, hand-drawn ink, ruled page`.
 
-### Task 5: Cricket AI
+### Task 3: Bench model
 
 **Files:**
-- Create: `src/cricket/ai.ts`
-- Test: `src/cricket/ai.test.ts`
+- Create: `src/bench/model.ts`
+- Test: `src/bench/model.test.ts`
 
 **Interfaces:**
-- Consumes: `Spin`, `finalAngle`, `toScreen`, `outcomeAt`, `toPage` (Task 3); `gaussian`.
-- Produces:
-  - `aiSpin(rng, startAngle: number): Spin` (power uniform in [0.3, 1], dir random)
-  - `aiAim(rng, s: Spin): Point` (a screen point: picks a random outer 6-sector centre at r = 160, rotates it by `finalAngle(s) + gaussian(rng, 0.45)`)
+- **Consumes:** `Saved`, `Stroke`, `ItemId` (Task 1); `segPointDist` (Task 2).
+- **Produces:**
+  - `BENCH_W = 600`, `BENCH_H = 800`, `MAX_STROKES = 300`
+  - `moveItem(s: Saved, id: ItemId, x: number, y: number): Saved` (clamps x to [0,600] and y to [0,800])
+  - `normalizeItems(s: Saved): Saved` (clamps every item; called by `load`)
+  - `simplify(pts: [number, number][], eps = 1.5): [number, number][]` (Ramer–Douglas–Peucker)
+  - `addStroke(s: Saved, pts: [number, number][], id: string): Saved` (simplifies; ignores strokes with fewer than 2 points; drops the oldest beyond 300)
+  - `eraseAt(s: Saved, p: Point, r = 8): Saved` (removes every stroke with any segment within r of p)
+  - `resetBench(s: Saved): Saved` (default items, no strokes; keeps name, muted and best)
 
-- [ ] **Step 1: Failing tests:**
-  - `aiSpin` power is always in [0.3, 1].
-  - Simulate 2000 balls (`aiSpin`, then `aiAim`, then `outcomeAt(toPage(aim, finalAngle(spin)))`). Mean runs per legal ball is in [0.8, 3.0], and the out rate is in [0.05, 0.35].
-- [ ] **Step 2:** Run and expect FAIL.
+- [ ] **Step 1: Failing tests.**
+  - `moveItem(..., 'pen', 900, -20)` → pen at (600, 0).
+  - **Review Focus 5:** `load()` with saved `items.tiffin = {x:5000,y:5000,rot:0}` → tiffin clamped to (600,800). Wire `normalizeItems` into `load` in this task.
+  - `simplify` of 100 collinear points → 2 points.
+  - Adding 301 strokes keeps 300, and the first id is gone.
+  - A 1-point stroke is ignored.
+  - `eraseAt` on a point 5 away from a stroke removes it; 20 away keeps it.
+  - `resetBench` keeps `name`.
+- [ ] **Step 2:** Run → FAIL.
 - [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run and expect PASS. If the bands fail, tune σ only, not the zone table, and note the new σ in the spec.
-- [ ] **Step 5:** Commit `feat(cricket): computer bowler and batsman`.
+- [ ] **Step 4:** Run → PASS.
+- [ ] **Step 5:** Commit `feat(bench): item moves, strokes, erase, reset`.
 
-### Task 6: Football rules
+### Task 4: Cricket field and spin
+
+**Files:**
+- Create: `src/cricket/field.ts`, `src/cricket/spin.ts`
+- Test: `src/cricket/field.test.ts`, `src/cricket/spin.test.ts`
+
+**Interfaces:**
+- **Consumes:** `Point`, `rotate`; `shuffle`, `makeRng`.
+- **Produces (field.ts):**
+  - `R = 190`, `INNER = 85`, `WEDGES = 16`, `LINE_TOUCH = 2.5`
+  - `type OutHow = 'catch' | 'bowled' | 'lbw' | 'runout'`
+  - `type Label = { kind: 'runs'; runs: 1|2|3|4|6 } | { kind: 'dot' } | { kind: 'wide' } | { kind: 'noball' } | { kind: 'out'; how: OutHow }`
+  - `type Field = { outer: Label[]; inner: Label[] }` (index = wedge, 16 each)
+  - `makeField(rng): Field`: shuffles the spec §7 table counts separately for each ring; each `out` gets a random `how`
+  - `type Hit = { kind: 'cell'; ring: 'inner' | 'outer'; wedge: number; label: Label } | { kind: 'off' }`
+  - `hitAt(f: Field, p: Point): Hit`: wedge `= floor(angle / (2π/16))`, where `angle = atan2(y,x)` normalised to [0,2π); inner if r < 85; off if r ≥ 190
+  - `onLine(p: Point): boolean`: within 2.5 of any radial line at k·22.5° (for r ≤ 192.5), of r = 85, or of r = 190
+- **Produces (spin.ts):**
+  - `type Spin = { power: number; dir: 1 | -1; startAngle: number }`
+  - `spinDuration(s): number`
+  - `angleAt(s, t): number` (t clamped)
+  - `finalAngle(s): number`
+  - `quarterTurnTimes(s): number[]`
+  - `toPage(screen: Point, pageAngle: number): Point = rotate(screen, -pageAngle)`
+  - `toScreen(page: Point, pageAngle: number): Point`
+
+- [ ] **Step 1: Failing tests.**
+  - `makeField(makeRng(1))`:
+    - outer labels counted by kind match `{dot:3,'1':3,'2':3,'3':1,'4':3,'6':0,out:2,wide:1,noball:0}`
+    - inner labels match `{dot:4,'1':2,'2':2,'3':0,'4':2,'6':3,out:2,wide:0,noball:1}`
+    - the same seed gives the same field
+  - `hitAt`:
+    - `{x:100,y:5}` → outer, wedge 0
+    - `{x:0,y:50}` → inner, wedge 4
+    - `{x:0,y:190}` → off
+    - `{x:300,y:0}` → off
+  - `onLine`:
+    - `{x:100,y:1}` (near the 0° radial) → true
+    - `{x:86,y:30}`: r ≈ 91.1 → false
+    - `{x:0,y:84}` (near r = 85, but also on the 90° radial) → true
+    - `{x:120,y:40}` → false
+  - **spin:**
+    - `spinDuration` is 1.0 at power 0 and ≈ 2.667 at power 1.
+    - `finalAngle` at power 0 = 1.5π.
+    - `angleAt(s, 99) === finalAngle(s)`.
+    - dir −1 mirrors dir 1.
+    - `quarterTurnTimes` at power 0 has length 3 (count with a 1e-9 tolerance) and is strictly increasing.
+    - `toScreen(toPage(p,a),a)` ≈ p.
+- [ ] **Step 2:** Run → FAIL.
+- [ ] **Step 3:** Implement. Physics: `ω0 = 2π(1.5+2.5p)`, `α = 3π`, `θ(t) = start + dir(ω0 t − ½αt²)`.
+- [ ] **Step 4:** Run → PASS.
+- [ ] **Step 5:** Commit `feat(cricket): random wheel field and spin physics`.
+
+### Task 5: Cricket balls, match, blind input, AI
+
+**Files:**
+- Create: `src/cricket/match.ts`, `src/cricket/blind.ts`, `src/cricket/ai.ts`
+- Test: `src/cricket/match.test.ts`, `src/cricket/blind.test.ts`, `src/cricket/ai.test.ts`
+
+**Interfaces:**
+- **Consumes:** Task 4 exports; `Side`, `gaussian`.
+- **Produces:**
+  - `type BallOutcome = { kind: 'runs'; runs: 0|1|2|3|4|6 } | { kind: 'extra'; what: 'wide' | 'noball' } | { kind: 'out'; how: OutHow | 'stumped' }`
+  - `resolveDrop(f: Field, p: Point, isRedrop: boolean): BallOutcome | { kind: 'appeal' }`:
+    - First drop on a line → `appeal`.
+    - Re-drop: lands on `out` or off the field → `out lbw`; anything else → `runs 0`. A line touch is ignored on a re-drop.
+    - Normal drop: off → `out stumped`, `dot` → `runs 0`, wide/noball → `extra`, out → its `how`.
+  - `type Overs = 1 | 2 | 5`, `WICKETS = {1:2, 2:3, 5:5}`
+  - `type Ball = { outcome: BallOutcome; at: Point }`
+  - `type Innings = { batting: Side; runs: number; wickets: number; legalBalls: number; balls: Ball[] }`
+  - `type CricketMatch = { overs: Overs; field: Field; innings: [Innings] | [Innings, Innings]; done: boolean }`
+  - `newCricketMatch(overs: Overs, field: Field, firstBat: Side): CricketMatch`
+  - `applyBall(m, b: Ball): CricketMatch` (throws if `done`)
+  - `currentInnings(m): Innings`
+  - `target(m): number | null`
+  - `cricketResult(m): null | { winner: Side | 'tie'; by: 'runs' | 'wickets' | null; n: number }`
+  - `blindPoint(rng, pressed: Point, holdMs: number): Point`: `pressed` + Gaussian drift with σ per axis = `8·√(holdMs/1000)`, plus a Gaussian tremor with σ = 3
+  - `aiSpin(rng, startAngle: number): Spin` (power uniform in [0.3,1], dir ±1)
+  - `aiDrop(rng): { pressed: Point; holdMs: number }` (uniform over the disk r ≤ 175, holdMs uniform in [300,1200])
+
+- [ ] **Step 1: Failing tests.**
+  - **resolveDrop:**
+    - A point on the 0° radial → `appeal`.
+    - The same point with `isRedrop:true` resolves from its cell, not as an appeal (**Review Focus 2**).
+    - Off the field normally → `out stumped`; off the field on a re-drop → `out lbw`.
+  - **match:**
+    - A wide adds 1 run with `legalBalls` unchanged.
+    - 6 legal balls end a 1-over innings.
+    - 2 outs end a 1-over innings early.
+    - The chase passes the target on ball 3 → `done`, and the result is `{winner: chaser, by:'wickets', n:2}`; `applyBall` after that throws.
+    - Equal totals → `{winner:'tie', by:null, n:0}`.
+    - The defending side wins with `by:'runs'`.
+  - **blind:** with `holdMs = 1000`, over 4000 samples, the x-offset SD is in [7.5, 9.6] (√(8²+3²) ≈ 8.54), and the mean is within ±0.5.
+  - **ai:** across 2000 simulated balls (aiSpin → aiDrop → blindPoint → toPage by finalAngle → resolveDrop, resolving appeals with one more aiDrop), every outcome is valid, mean runs per legal ball is in [0.3, 3.0], and the out rate is in [0.05, 0.6].
+- [ ] **Step 2:** Run → FAIL.
+- [ ] **Step 3:** Implement.
+- [ ] **Step 4:** Run → PASS.
+- [ ] **Step 5:** Commit `feat(cricket): ball resolution, lbw appeal, match, blind drop, ai`.
+
+### Task 6: Football pass resolution
 
 **Files:**
 - Create: `src/football/rules.ts`
 - Test: `src/football/rules.test.ts`
 
 **Interfaces:**
-- Consumes: `Point` from `src/geom.ts` (Task 3).
-- Produces:
-  - Constants `W=400`, `H=600`, `DOT_R=10`, `HIT_R=12`, `CATCH_R=22`, `MOUTH=[140,260]`, `BOX={x0:100,x1:300,depth:80}`, `MIN_GAP=30`, `EDGE=10`
-  - `type Team = 'you' | 'cpu'` (`you` defends y = H)
-  - `type Dot = { id: string; team: Team; x: number; y: number }`
-  - `type PassResult = { kind:'complete'; to: Dot } | { kind:'intercepted'; by: Dot; at: Point } | { kind:'goal'; scorer: Team; at: Point } | { kind:'out'; to: Dot; at: Point }`
-  - `validPlacement(dots: Dot[], c: Dot): boolean`
+- **Consumes:** `Point`, `Side`, `dist`, `segPointDist`.
+- **Produces:**
+  - Constants: `W=800`, `H=500`, `DOT_R=10`, `HIT_R=12`, `CATCH_R=22`, `MOUTH=[190,310]`, `DBOX={depth:80, y0:150, y1:350}`, `MIN_GAP=30`, `EDGE=10`, `THROW_IN=10`
+  - `you` defends x = 0 and attacks x = 800.
+  - `type Dot = { id: string; team: Side; x: number; y: number }`
+  - `type PassResult = ({ kind: 'complete'; to: Dot } | { kind: 'intercepted'; by: Dot; at: Point } | { kind: 'goal'; scorer: Side; at: Point } | { kind: 'out'; at: Point; restart: Point }) & { ray?: { from: Point; to: Point } }`: `ray` is set only when the result came from the empty-space ray, and runs from the line's end to the hit or exit point
+  - `validPlacement(dots: Dot[], c: { x: number; y: number }): boolean`: anywhere on the pitch, outside both D-boxes, ≥ 10 from the edge, ≥ 30 from any dot
   - `shotEnd(from: Point, angle: number, length: number): Point`
-  - `resolvePass(dots: Dot[], fromDotId: string | null, from: Point, to: Point, team: Team): PassResult`
+  - `resolvePass(dots: Dot[], fromDotId: string | null, from: Point, to: Point, team: Side): PassResult`
+- **Algorithm** (spec §8 "Resolving a pass"):
+  - **Collect events along the segment, each with its t:**
+    - an opponent within 12 → `intercepted` at the projection point
+    - crossing x = 0 or x = 800 with y in `MOUTH` → `goal`; through the defended side, the scorer is `other(team)`
+    - leaving [0,W]×[0,H] anywhere else → `out`, with `restart` = the exit point moved 10 inward, perpendicular to the edge it crossed
+  - The earliest t wins. The from-dot and own dots are ignored.
+  - **If there are no events:**
+    - an own dot within 22 of the end point → `complete` (nearest one)
+    - otherwise walk the ray from `to` along the same direction up to 2000 units:
+      - the first dot of either team within 12 → `complete` for own, `intercepted` (at the dot's position) for an opponent
+      - a goal crossing on the ray counts as `out` at the ray's exit point
+      - no hit → `out` at the ray's exit point
 
-- [ ] **Step 1: Failing tests.** Build small dot layouts inline, one case per rule in spec §7:
-  - complete within 22 of a teammate
-  - intercepted when an opponent is within 12 of the segment
-  - a teammate on the segment is ignored
-  - goal through the top mouth for `you`
-  - own goal through the bottom mouth → `scorer:'cpu'`
-  - out off the side edge → nearest opponent to the exit point
-  - empty-space stop → ray hits a teammate → complete
-  - empty-space stop → ray hits an opponent → intercepted
-  - **Review Focus 1:** an opponent at (200, 100), just outside the top goal box, with a line from (200,200) to (200,−50) → intercepted, not goal
-  - **Review Focus 2:** empty-space stop, ray hits nothing → out at the ray's exit, nearest opponent
-  - `validPlacement` rejects: wrong half, inside a goal box, closer than 30 to another dot, within 10 of the edge
-- [ ] **Step 2:** Run and expect FAIL.
-- [ ] **Step 3:** Implement. Use segment–point distance via projection `t ∈ [0,1]`, and collect events with their `t`. Goal-line crossing: solve for y = 0 / y = H along the segment and check x is in `MOUTH`. Out: the first `t` where x or y leaves [0, W]×[0, H]. The earliest `t` wins. For the ray, reuse the same walker on the segment from `to` to `to + dir·1000`, with dots of both teams as hits and goals ignored.
-- [ ] **Step 4:** Run and expect PASS.
+- [ ] **Step 1: Failing tests.** One small inline layout per rule:
+  - complete within 22
+  - intercepted when an opponent is within 12 of the segment, with `at` on the segment
+  - an own dot on the segment is ignored
+  - a goal through the right mouth for `you`
+  - an own goal through the left mouth → `scorer:'cpu'`
+  - out through the top edge → `restart.y === 10`
+  - an opponent at (770,250) on a line (600,250)→(820,250) → intercepted, not goal
+  - an empty-space stop whose ray hits an own dot → complete, with `ray` set
+  - an empty-space stop whose ray hits an opponent → intercepted at the dot
+  - an empty-space stop whose ray passes through the mouth and hits nobody → out (not goal)
+  - `validPlacement` rejects:
+    - a point in either D-box, e.g. (40,250) or (760,250)
+    - a point within 30 of a dot
+    - a point within 10 of the edge
+    - and accepts (700,100), a spot in the opponent's half
+- [ ] **Step 2:** Run → FAIL.
+- [ ] **Step 3:** Implement.
+- [ ] **Step 4:** Run → PASS.
 - [ ] **Step 5:** Commit `feat(football): pass resolution and placement rules`.
 
-### Task 7: Football match state and AI
+### Task 7: Football match, 3-pass rule, AI
 
 **Files:**
 - Create: `src/football/match.ts`, `src/football/ai.ts`
 - Test: `src/football/match.test.ts`, `src/football/ai.test.ts`
 
 **Interfaces:**
-- Consumes: everything from Task 6; `makeRng`, `gaussian`.
-- Produces:
-  - `DOTS_PER_TEAM = 6`
-  - `type Target = 1 | 3 | 5`
-  - `type FootballMatch = { target: Target; dots: Dot[]; score: Record<Team, number>; phase: 'placement' | 'play' | 'done'; placingTurn: Team; possession: Team; ball: { dotId: string | null; x: number; y: number } }`
-  - `newFootballMatch(target: Target, kickoff: Team): FootballMatch` (placement phase, `you` places first; `kickoff` is stored as the possession for the first play)
-  - `place(m, x: number, y: number): FootballMatch` (throws on invalid; alternates; moves to play after 12 dots, ball at (200, 300))
-  - `applyPass(m, r: PassResult): FootballMatch`
-  - `footballWinner(m): Team | null`
-  - `applyWobble(rng, angle: number, length: number): { angle: number; length: number }` (σ 0.07 rad, 8%)
-  - `aiPlace(rng, m): { x: number; y: number }` (3 formation templates for the cpu half, ±15 jitter, retried until `validPlacement`)
-  - `aiPass(rng, m): { angle: number; length: number }` (72 angles × lengths [100, 200, 300, 400], scoring per spec §7; cpu attacks y = H)
+- **Consumes:** Task 6 exports; `gaussian`, `makeRng`.
+- **Produces:**
+  - `DOTS_PER_TEAM = 6`, `MAX_LINES = 3`, `type Target = 1 | 3 | 5`
+  - `type Trail = { from: Point; to: Point; team: Side; ray?: { from: Point; to: Point } }`
+  - `type FootballMatch = { target: Target; dots: Dot[]; score: Record<Side, number>; phase: 'placement' | 'play' | 'done'; placingTurn: Side; kickoff: Side; possession: Side; ball: { x: number; y: number; dotId: string | null }; lines: number; trail: Trail[] }`
+  - `newFootballMatch(target: Target, kickoff: Side): FootballMatch`
+  - `place(m, x: number, y: number): FootballMatch`: throws on an invalid spot; `placingTurn` alternates, starting with `you`; after 12 dots → `play`, ball at (400,250) with `dotId:null`, `possession = kickoff`, `lines = 0`
+  - `applyPass(m, from: Point, to: Point, r: PassResult): FootballMatch`:
+    - Pushes a `Trail` (copying `r.ray`) and increments `lines`.
+    - **Goal:** score +1, ball to the centre, the conceding side kicks off, `lines = 0`.
+    - **Intercepted:** the ball goes to `at` with `dotId` = `by.id` only if `at` equals the dot's position, otherwise `null`; possession swaps; `lines = 0`.
+    - **Out:** the ball goes to `restart`, possession swaps, `lines = 0`.
+    - **Complete:** the ball goes to the dot, and possession stays.
+    - **3-pass rule:** if possession stayed and `lines === 3`, give the ball to the opponent's dot nearest `to`, swap possession, `lines = 0`.
+    - Sets `done` when the target is reached.
+  - `footballWinner(m): Side | null`
+  - `applyWobble(rng, angle: number, length: number): { angle: number; length: number }` (σ 0.07 rad; length × (1 + N(0, 0.08)))
+  - `aiPlace(rng, m): { x: number; y: number }`: 3 formation templates, ±15 jitter, retry until `validPlacement`, with up to 50 tries and then any valid grid point
+  - `aiPass(rng, m): { angle: number; length: number }` (cpu attacks x = 0):
+    - Evaluate 72 angles × lengths [112, 225, 337, 450] with `resolvePass`, without wobble.
+    - Score: goal 1000; complete 100 + (from.x − to.x); intercepted or out −200.
+    - When `m.lines === 2`, every non-goal outcome scores −200 + 0.1 × the distance from the turnover point to (800,250).
+    - Pick the max, breaking ties with the RNG.
 
 - [ ] **Step 1: Failing tests.**
   - **match:**
-    - 12 placements move the phase to play.
-    - A goal increments the score, resets the ball to the centre with `dotId:null`, and gives possession to the conceding team.
-    - Reaching the target sets `done` and `footballWinner`.
-    - A complete pass keeps possession; an interception swaps it.
+    - 12 valid placements → `play`.
+    - An invalid `place` throws.
+    - A goal → the score goes up, the ball is at the centre, and the conceder has possession.
+    - Reaching the target → `done` and `footballWinner`.
+    - Complete keeps possession; intercepted swaps it.
+    - **Review Focus 3:** with `lines` at 2, a third `complete` swaps possession to the opponent's dot nearest the line's end, and `lines` resets to 0.
   - **ai:**
-    - `aiPlace` called 6 times via `place` always yields valid placements (100 seeds).
-    - With an open lane and the ball at (200, 500) for cpu (no dots between it and the bottom mouth), `aiPass` → `resolvePass` without wobble gives `goal`.
-    - When the only forward lane is blocked by a `you` dot, `aiPass` chooses a `complete` pass.
-- [ ] **Step 2:** Run and expect FAIL.
+    - 100 seeds of 6 `aiPlace` calls through `place` never throw.
+    - With the ball at (150,250) for the cpu and an empty lane to the left mouth, `aiPass` without wobble → `goal`.
+    - When the only lanes toward goal are blocked by `you` dots but a teammate is open, `aiPass` → `complete`.
+- [ ] **Step 2:** Run → FAIL.
 - [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run and expect PASS.
-- [ ] **Step 5:** Commit `feat(football): match flow and computer player`.
+- [ ] **Step 4:** Run → PASS.
+- [ ] **Step 5:** Commit `feat(football): match flow, 3-pass rule, computer player`.
 
-### Task 8: Sound, Bench hub, game screens
+### Task 8: Dot Box rules, AI, initials
 
 **Files:**
-- Create: `src/sound.ts`, `src/bench/Bench.tsx`, `src/Settings.tsx`, `src/cricket/Cricket.tsx`, `src/football/Football.tsx`, `src/Scorecard.tsx`
+- Create: `src/dotbox/rules.ts`, `src/dotbox/ai.ts`, `src/name.ts`
+- Test: `src/dotbox/rules.test.ts`, `src/dotbox/ai.test.ts`, `src/name.test.ts`
+
+**Interfaces:**
+- **Consumes:** `Side`, `other`, `Point`, `shuffle`.
+- **Produces:**
+  - `type Edge = { o: 'h' | 'v'; r: number; c: number }`:
+    - `h` joins dot (r,c) to (r,c+1), with r ∈ 0..rows and c ∈ 0..cols−1
+    - `v` joins (r,c) to (r+1,c), with r ∈ 0..rows−1 and c ∈ 0..cols
+  - `type DotBox = { rows: number; cols: number; h: (Side | null)[][]; v: (Side | null)[][]; boxes: (Side | null)[][]; turn: Side; score: Record<Side, number> }`
+  - `newDotBox(rows: number, cols: number, first: Side): DotBox` (throws unless 2 ≤ rows, cols ≤ 10)
+  - `legalEdges(g): Edge[]`
+  - `playEdge(g, e: Edge): DotBox`: throws if taken; claims the 0–2 boxes it completes; the turn stays if at least one was claimed
+  - `dotBoxWinner(g): Side | 'tie' | null`
+  - `edgeNear(g, p: Point): Edge | null`: p is in box units (dot (r,c) at (c, r)); returns the nearest free edge whose midpoint is within 0.5
+  - `aiEdge(rng, g): Edge`, per spec §8b:
+    1. A completing edge.
+    2. Otherwise a random edge that leaves no box with 3 sides.
+    3. Otherwise the edge minimising `giveaway(g, e)`, the number of boxes the opponent then claims by repeatedly taking completing edges.
+  - `initialOf(name: string): string`: the first `[A-Za-z]` upper-cased, else `'Y'`. The CPU's initial is the constant `'C'` in `dotbox/rules.ts`.
+
+- [ ] **Step 1: Failing tests.**
+  - **rules:**
+    - A 2×2 grid has 12 legal edges.
+    - A 4th side claims the box, the score goes up, and the turn stays.
+    - A non-completing line passes the turn.
+    - **Review Focus 4:** the shared edge between two 3-sided boxes claims both, the score goes up by 2, and the turn stays.
+    - A full board → winner, or `'tie'` on equal scores.
+    - Playing a taken edge throws.
+    - `newDotBox(1,4,'you')` and `newDotBox(11,4,'you')` throw.
+    - `edgeNear(g,{x:0.5,y:0.05})` → `{o:'h', r:0, c:0}`.
+    - `edgeNear(g,{x:5,y:5})` on a 2×2 grid → `null` (too far from any edge).
+    - `edgeNear` skips edges that are already taken.
+  - **ai:**
+    - Takes an available box.
+    - Avoids a third side when a safe edge exists.
+    - In a position with only unsafe edges, picks the edge with the smallest giveaway.
+  - **name (Review Focus 5):** `initialOf('rafi') === 'R'`, `initialOf('রাফি') === 'Y'`, `initialOf('') === 'Y'`, `initialOf('  9ab') === 'A'`.
+- [ ] **Step 2:** Run → FAIL.
+- [ ] **Step 3:** Implement.
+- [ ] **Step 4:** Run → PASS.
+- [ ] **Step 5:** Commit `feat(dotbox): rules, computer player, initials`.
+
+### Task 9: Sound and bench screen
+
+**Files:**
+- Create: `src/sound.ts`, `src/bench/Bench.tsx`, `src/bench/items.tsx`, `src/Settings.tsx`
 - Modify: `src/App.tsx`, `src/styles.css`
 
 **Interfaces:**
-- Consumes: all rules, match and AI modules; `Notebook`, `wobblyLine`, `wobblyCircle`; `strings`.
-- Produces:
-  - `play(name: 'rustle' | 'thud' | 'scratch' | 'bell' | 'cheer' | 'groan'): void`
-  - `setMuted(m: boolean): void`, `isMuted(): boolean` (persisted under the localStorage key `tb.muted`)
-  - `<Bench onPick={(s: 'cricket' | 'football') => void} />`
-  - `<Cricket onExit={() => void} />`
-  - `<Football onExit={() => void} />`
-  - `<Scorecard lines={string[]} />` (an SVG `<g>`)
-  - Each game exposes its `<svg>` ref to the result phase for sharing (Task 9).
+- **Consumes:** `Saved`, `save`, the bench model (Task 3), `wobblyLine`, `strings`.
+- **Produces:**
+  - `play(name: 'rustle' | 'thud' | 'scratch' | 'bell' | 'cheer' | 'groan' | 'rattle', pan = 0): void` (pan in [−1,1] via a `StereoPannerNode`)
+  - `setMuted(m: boolean): void`
+  - `<Bench saved setSaved onOpenNotebook={() => void} />`
+  - `<Settings saved setSaved onClose />`
+  - `items.tsx` exports one SVG component per `ItemId`:
+    - brown kraft khata with a white label showing `saved.name`
+    - textbooks titled বাংলা / গণিত / English
+    - the pen, pencil and eraser
+    - the geometry box
+    - a steel tiffin box
+    - no brand marks
 
-- [ ] **Step 1: `sound.ts`.** Create the AudioContext lazily on the first `play`. Synthesise each sound: rustle = 60 ms band-passed noise; thud = 80 Hz sine with a fast decay; scratch = high-passed noise; bell = 880 Hz + 1320 Hz sines decaying over 1.2 s; cheer and groan = noise sweeps.
-- [ ] **Step 2: `Bench.tsx`.** Top-down desk per spec §5:
-  - Two exercise-book buttons and a pen button that opens `Settings`.
-  - A tiffin box that wiggles on tap.
-  - Scratched-name decoration.
-  - `Settings` has a sound toggle and font credits (Patrick Hand and Galada, SIL OFL).
-- [ ] **Step 3: `Cricket.tsx`.** Phases: setup (overs 1/2/5, default 1) → toss → balls → result.
-  - **Rotation:** the page rotates via CSS `transform: rotate()` driven by `requestAnimationFrame` sampling `angleAt`. Play `rustle` at each `quarterTurnTimes`, and `thud` at the end.
-  - **Bowling:** when you bowl, flick power = `clamp(speed_px_per_ms / 2, 0, 1)`; the direction comes from the sign of the cross product of the flick vector and the radius vector.
-  - **Batting:** while you bat, a black blink overlay covers the page from the flick until your tap. Your tap is converted to page coordinates with `getScreenCTM().inverse()`, then jitter (σ = 6), then `toPage`.
-  - **After each ball:** draw an ink dot (`wobblyCircle` r = 3), flash the zone, and show the shout from `strings`.
-  - **Result:** `Scorecard` inside the SVG, with Share, Play again and Back buttons.
-  - **Reduced motion:** jump straight to `finalAngle`.
-- [ ] **Step 4: `Football.tsx`.** Phases: setup (first to 1/3/5, default 1) → toss → placement (tap to place, invalid taps shake) → play → result.
-  - **Passing:** a slingshot drag from the ball (max 120 px → length 60–400), then `applyWobble`, `shotEnd` and `resolvePass`.
-  - **Drawing:** draw the segment with `wobblyLine` and animate it with `stroke-dashoffset` while `scratch` plays.
-  - **Empty-space rule:** for rule 5, draw the extension as a dotted line.
-  - **Interceptions:** pulse the intercepting dot.
-  - **CPU turns:** wait 600 ms, then `aiPass`.
-  - **Result:** the page keeps all lines; `Scorecard` reads "You 3 – 1 CPU".
-- [ ] **Step 5: Manual verification** (`npm run dev`, at 360 px and desktop widths):
-  - A full 1-over cricket match and a first-to-1 football match both finish and show the result.
-  - Tapping outside the ground shows WIDE.
-  - Mute persists after a reload.
-  - All bench buttons are reachable by Tab with a visible focus ring.
-  - Reduced-motion emulation (DevTools rendering panel) skips the animations.
-- [ ] **Step 6:** Commit `feat: bench hub, sound, cricket and football screens`.
+- [ ] **Step 1: `sound.ts`.**
+  - A lazy `AudioContext` on the first `play`.
+  - `muted` is read from storage via `setMuted`.
+  - Synthesise each sound:
+    - rustle: 60 ms band-passed noise
+    - thud: an 80 Hz decaying sine
+    - scratch: high-passed noise
+    - bell: 880 Hz + 1320 Hz over 1.2 s
+    - cheer and groan: noise sweeps
+    - rattle: three short clicks
+- [ ] **Step 2: `Bench.tsx`.** An `<svg viewBox="0 0 600 800">` scaled to fit, on the floor background.
+  - **Modes:** `move` (default), `draw` (pen tapped) and `erase` (eraser tapped). Tapping the active tool returns to `move`.
+  - **Moving:** a pointer drag on an item → `moveItem`.
+  - **Drawing:** a drag on the wood collects points (screen → bench via `getScreenCTM().inverse()`), and pointerup → `addStroke`.
+  - **Erasing:** dragging calls `eraseAt`.
+  - **Tapping items:** a tap (movement under 6 px) on the notebook → `onOpenNotebook`; on the geometry box → `Settings`; on the tiffin box → a CSS wiggle plus `play('rattle')`.
+  - Strokes are rendered as ink paths.
+- [ ] **Step 3: `Settings.tsx`:** a sound toggle, a reset button (`resetBench` after a `confirm`), and font credits.
+- [ ] **Step 4: Manual check** (`npm run dev`, at 360 px and desktop widths):
+  - Drag every item; draw and erase.
+  - Reload → everything is restored.
+  - The layout matches across widths.
+  - Tab reaches every item with a visible focus ring.
+- [ ] **Step 5:** Commit `feat: bench with rearranging, drawing, erasing, settings, sound`.
 
-### Task 9: Share image and release build
+### Task 10: Notebook menu, zoom, result and share
 
 **Files:**
-- Create: `src/share.ts`, `README.md`
-- Modify: `src/cricket/Cricket.tsx`, `src/football/Football.tsx` (wire up the Share button)
+- Create: `src/notebook/Notebook.tsx`, `src/games/types.ts`, `src/games/Result.tsx`, `src/share.ts`
+- Modify: `src/App.tsx`
 
 **Interfaces:**
-- Produces:
-  - `svgToPng(svg: SVGSVGElement, scale?: number): Promise<Blob>` (default scale 2; clones the SVG, injects `<style>` with both fonts as base64 `@font-face` fetched from `/fonts/*.woff2`, serialises, loads into an `Image`, draws on a canvas, returns `toBlob('image/png')`)
-  - `shareOrDownload(blob: Blob, filename: string, text: string): Promise<'shared' | 'downloaded'>` (`navigator.canShare?.({ files: [file] })` → `navigator.share`, otherwise an `<a download>` click)
+- **Consumes:** `Saved`, `recordBest`, `Page`, `strings`, `bn`, `useReducedMotion`.
+- **Produces:**
+  - `type GameProps = { name: string; onBest: (value: number) => void; onExit: () => void }`
+  - `<Notebook saved setSaved onClose />`:
+    - **Cover:** the label নাম / শ্রেণি / রোল. If `name` is empty, it shows an input to write it; tapping the label edits it.
+    - **Index:** ১. খাতায় ক্রিকেট, ২. খাতায় ফুটবল, ৩. ডট বক্স, ৪. শীঘ্রই আসছে… (disabled), with `bn(best)` next to each game.
+    - **Game:** the chosen game zooms to about 90% of the viewport via a CSS `transform` transition; the football spread is rotated 90° when the viewport is portrait. A back control "← সূচিপত্র" returns.
+  - `<Result svgRef title="টিফিন শেষ!" outcome={'win' | 'loss' | 'tie'} onShare onAgain onIndex />` (plays `cheer` on a win, `groan` on a loss)
+  - `svgToPng(svg: SVGSVGElement, scale = 2): Promise<Blob>` (clones the SVG, inlines the three fonts as base64 `@font-face` fetched from `/fonts/`, then canvas → `toBlob('image/png')`)
+  - `shareOrDownload(blob: Blob, filename: string, text: string): Promise<'shared' | 'downloaded' | 'cancelled'>` (`AbortError` → `'cancelled'`)
 
-- [ ] **Step 1:** Implement `share.ts` and wire the Share buttons (`tiffin-break-cricket.png` / `tiffin-break-football.png`; text from `strings`). If the user cancels the share sheet (`AbortError`), do nothing.
-- [ ] **Step 2: Manual verification (Review Focus 5):**
-  - On desktop Chrome, Share downloads a PNG at 2× size. The PNG shows the ruled page, every ink mark, the scorecard, and the Patrick Hand and Galada glyphs (not a fallback font).
-  - On an Android phone (or Chrome DevTools device mode with Web Share), the share sheet opens with the image.
-- [ ] **Step 3:** Run `npm test` (all PASS) and `npm run build` (no type errors). Then `npx vite preview` and play one match of each game from the production build.
-- [ ] **Step 4:** Write `README.md`: what the game is, `npm i` / `npm run dev` / `npm test` / `npm run build`, and deploying with `npx wrangler pages deploy dist --project-name tiffin-break`. Do not run the deploy without the user's go-ahead.
-- [ ] **Step 5:** Commit `feat: share notebook page as image; readme`.
+- [ ] **Step 1:** Implement `Notebook.tsx` with placeholder game pages (`<Page>` with the game's name), plus `Result.tsx` and `share.ts`.
+- [ ] **Step 2: Manual check (Review Focus: share):**
+  - Bench → notebook → name entry → index → zoom into each placeholder → back → close.
+  - Reduced-motion emulation skips the zoom.
+  - A temporary Share on a placeholder downloads a 2× PNG on desktop Chrome, and the PNG shows the Atma and Patrick Hand glyphs, not a fallback font.
+  - On Android Chrome, the share sheet opens.
+- [ ] **Step 3:** Commit `feat: notebook menu with name label, index, zoom, result and share`.
+
+### Task 11: Cricket screen
+
+**Files:**
+- Create: `src/cricket/Cricket.tsx`
+- Modify: `src/notebook/Notebook.tsx` (mount it)
+
+**Interfaces:**
+- **Consumes:** Tasks 4–5, `GameProps`, `Result`, `play`, `wobblyCircle`, `wobblyLine`, `useReducedMotion`.
+- **Produces:** `<Cricket {...GameProps} />`.
+
+- [ ] **Step 1: Implement** the phases: setup (overs ১/২/৫, default ১) → toss (`makeRng(Date.now())` seed; if you win, choose ব্যাট/বল) → field drawn in ink → balls → result. The spread is the scorecard page (left) plus the field page (right).
+  - **When you bat:**
+    1. The eyelids close before the bowl, and the cursor is hidden (`cursor:none`; no touch marker).
+    2. The CPU's `aiSpin` animates the rotation with `requestAnimationFrame` sampling `angleAt`, playing `play('rustle', dir)` at each quarter turn time, then `thud`.
+    3. Press and hold, then release → `blindPoint(rng, pressed, holdMs)` → `toPage` → `resolveDrop`.
+    4. On `appeal`, show "এলবিডব্লিউ আপিল!" and repeat step 3 with `isRedrop:true`.
+    5. The eyes open: an ink dot, the cell flashes, and a Galada shout.
+  - **When you bowl:** a flick on the page sets the power (`clamp(speed_px_per_ms / 2, 0, 1)`) and the direction (the sign of the cross product of the radius vector and the flick vector). The CPU bats via `aiDrop`, then `blindPoint`.
+  - **Scorecard:** written ball by ball on the left page, with the player name and `bn()` digits.
+  - **At the end:** `onBest(your best innings runs)` and `Result`.
+  - **Sounds:** `play('bell')` when the match starts. `Result` plays `cheer` on a win and `groan` on a loss. The same applies to Tasks 12 and 13.
+- [ ] **Step 2: Manual check:**
+  - A full 1-over match finishes both innings.
+  - Off-circle → আউট.
+  - A line touch triggers the re-drop.
+  - Stereo panning flips with the direction (headphones).
+  - Reduced motion jumps straight to the final angle.
+  - The shared PNG includes both pages.
+- [ ] **Step 3:** Commit `feat(cricket): playable spin cricket page`.
+
+### Task 12: Football screen
+
+**Files:**
+- Create: `src/football/Football.tsx`
+- Modify: `src/notebook/Notebook.tsx`
+
+**Interfaces:**
+- **Consumes:** Tasks 6–7, `GameProps`, `Result`, `play`, `wobblyLine`, `wobblyCircle`.
+- **Produces:** `<Football {...GameProps} />`.
+
+- [ ] **Step 1: Implement** the phases: setup (first to ১/৩/৫, default ১) → toss → placement (tap to place an O; an invalid tap shakes; the CPU places an X 400 ms later) → play → result.
+  - **Your pass:** a slingshot drag from the ball, mapping 0–120 px to a length of 60–450 → `applyWobble` → `shotEnd` → `resolvePass` → `applyPass`.
+  - **Drawing:** each `Trail` is drawn with `wobblyLine`, animated with `stroke-dashoffset` while `scratch` plays, and any `ray` is drawn dotted.
+  - **Feedback:** an intercepting dot pulses; ink tally marks show ১/৩, ২/৩, শট.
+  - **CPU turns:** after 600 ms, `aiPass` → `applyWobble`.
+  - **Score:** "তুমি N – M সিপিইউ" at the top of the spread.
+  - **At the end:** `onBest(margin)` if you won, then `Result`.
+- [ ] **Step 2: Manual check:**
+  - A first-to-1 match completes.
+  - The 3rd line hands over possession.
+  - A throw-in restarts inside the line.
+  - On a portrait phone, the spread is rotated and drags still map correctly.
+- [ ] **Step 3:** Commit `feat(football): playable pass football spread`.
+
+### Task 13: Dot Box screen
+
+**Files:**
+- Create: `src/dotbox/DotBoxGame.tsx`
+- Modify: `src/notebook/Notebook.tsx`
+
+**Interfaces:**
+- **Consumes:** Task 8, `GameProps`, `Result`, `play`, `wobblyLine`.
+- **Produces:** `<DotBoxGame {...GameProps} />`.
+
+- [ ] **Step 1: Implement:**
+  - **Setup:** two steppers, সারি (rows) and কলাম (columns), each ২–১০, default ৪ × ৪.
+  - **Toss:** decides who starts.
+  - **The grid:** fits the page.
+  - **Your move:** a tap or drag → `edgeNear` → `playEdge`.
+  - **Claimed boxes:** get the initial (`initialOf(name)` for you, `'C'` for the CPU) in Patrick Hand, plus light hatching in that side's ink (blue for you, black for the CPU).
+  - **CPU move:** `aiEdge` after 500 ms, repeated while it keeps the turn.
+  - **At the end:** `onBest(margin)` if you won, then `Result`.
+- [ ] **Step 2: Manual check:**
+  - A 2×2 and a 10×10 game both finish.
+  - A double-box move gives exactly one extra turn.
+  - Your initial appears from the label name.
+- [ ] **Step 3:** Commit `feat(dotbox): playable dot box page`.
+
+### Task 14: Release build
+
+**Files:**
+- Create: `README.md`
+
+- [ ] **Step 1:** `npm test` → all PASS. `npm run build` → no type errors. `npx vite preview` → play one match of each game from the production build at 360 px and on desktop.
+- [ ] **Step 2:** Write `README.md`: what the game is, `npm i` / `npm run dev` / `npm test` / `npm run build`, and deploying with `npx wrangler pages deploy dist --project-name tiffin-break`. **Do not run the deploy** without the user's go-ahead.
+- [ ] **Step 3:** Commit `docs: readme and release check`.
