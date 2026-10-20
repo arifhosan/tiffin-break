@@ -24,7 +24,7 @@ A browser game that recreates the pen-and-paper games Bangladeshi students playe
 **v1:**
 - The bench: rearrangeable, with drawing on it, and remembered between visits.
 - The notebook as the menu.
-- Spin Cricket and Pass Football, both against the computer.
+- Spin Cricket, Pass Football and Dot Box, all against the computer.
 - Choice of match length.
 - Sharing the page as a PNG.
 - Bengali text.
@@ -34,7 +34,8 @@ A browser game that recreates the pen-and-paper games Bangladeshi students playe
 - Challenge links: the seed plus the score in the URL.
 - Live online play.
 - An English toggle.
-- Pen fight and the চিট game (রাজা-পুলিশ-ডাকাত-চোর).
+- Pen fight.
+- The চিট game (চোর-পুলিশ-বাবু-ডাকাত). Skipped [user]: playing it solo needs computer players that can bluff and be read, which hasn't been designed.
 - A "Sir is coming!" button.
 - A replay GIF.
 
@@ -89,7 +90,8 @@ A browser game that recreates the pen-and-paper games Bangladeshi students playe
 - **Opening it shows the index page** [user]: a handwritten list:
   - ১. খাতায় ক্রিকেট
   - ২. খাতায় ফুটবল
-  - ৩. শীঘ্রই আসছে… (greyed out)
+  - ৩. ডট বক্স
+  - ৪. শীঘ্রই আসছে… (greyed out)
   
   Your best scores are shown next to the games: the highest cricket innings, and the biggest football win margin [call].
 - **Tapping a game zooms in** [user]. The bench fades back and the game's page (or double page) smoothly grows and straightens until it fills most of the screen. A back control (← সূচিপত্র) zooms back out to the index, and closing the notebook returns you to the bench [call].
@@ -204,6 +206,29 @@ If none of those happen, look at the end point:
   Pick the best, breaking ties with the RNG, then apply wobble.
   - On its 3rd line, the CPU scores only goals and the chance of losing the ball near its own goal, because a completed pass is worthless on the last line [call].
 - **Result:** the page keeps every ink line. The score is written at the top of the spread (e.g. "তুমি ৩ – ১ সিপিইউ").
+
+## 8b. ডট বক্স (Dot Box / box making)
+
+### Rules [user approved the standard game]
+- A grid of dots is drawn on the page.
+- Players take turns drawing **one line** between two neighbouring dots, across or down.
+- Whoever draws the **fourth side** of a box claims it, writes their **initial** inside, and **takes another turn**.
+- When every box is filled, whoever has the most boxes wins. Equal counts is a tie.
+
+### Details
+- **Grid size is customisable** [user]: rows and columns chosen separately, each from ২ to ১০ boxes. Default ৪ × ৪ [call]. Box size scales so the grid fits the page.
+- **Initials are in English** [user]:
+  - Yours is the first Latin letter of the name on your notebook label, upper-cased. If the name has no Latin letter, it's "Y" [call].
+  - The computer's is "C" [call].
+- **Ink:** your lines and boxes are blue, the computer's black. A claimed box gets the initial plus light hatching in that ink [call].
+- **Input:** tap or drag between two neighbouring dots. The nearest free edge within about half a box is selected; otherwise nothing happens [call]. The line draws in wobbly ink with a scratch sound.
+- **Who starts:** the toss winner [call].
+- **Computer player** [call]:
+  1. Take any box that can be completed.
+  2. Otherwise, draw a line that doesn't create a box's third side.
+  3. Otherwise, give away the fewest boxes: pick the move whose resulting chain is shortest.
+  - One difficulty.
+- **Best score:** the biggest win margin, in boxes [call].
 
 ## 9. Result and sharing [user: share as image]
 
