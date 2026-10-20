@@ -25,4 +25,4 @@ npx wrangler pages deploy dist --project-name tiffin-break
 
 No backend and no accounts: the bench layout, your name and best scores live in the browser's localStorage.
 
-Fonts: Atma, Galada and Patrick Hand, licensed under the SIL Open Font License.
+Fonts: Atma, Galada and Patrick Hand, licensed under the SIL Open Font License 1.1 (see `public/fonts/OFL.txt`).
