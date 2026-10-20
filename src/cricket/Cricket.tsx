@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
-import type { Point } from '../geom'
+import { toSvg, type Point } from '../geom'
 import { Page } from '../Page'
 import { useReducedMotion } from '../motion'
 import { makeRng } from '../rng'
@@ -52,6 +52,9 @@ export function Cricket(props: GameProps) {
   return <Match key={round} {...props} onAgain={() => setRound((r) => r + 1)} />
 }
 
+// Rejection reason for a match whose page was left; the only error `start` ignores.
+const GONE = new Error('page left')
+
 function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => void }) {
   const layer = useContext(ResultLayer)
   const reduce = useReducedMotion()
@@ -83,13 +86,13 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
   }, [])
   useEffect(() => { panel.current?.querySelector('button')?.focus() }, [phase])
 
-  const wait = (ms: number) => new Promise<void>((ok, stop) => setTimeout(() => (alive.current ? ok() : stop()), ms))
+  const wait = (ms: number) => new Promise<void>((ok, stop) => setTimeout(() => (alive.current ? ok() : stop(GONE)), ms))
   const say = (st: Step, p = '') => { setStep(st); setPrompt(p) }
 
   // Pointer position relative to the wheel centre, unturned (the "screen" frame of spin.ts). getScreenCTM includes the
   // CSS rotation of the spread on a portrait phone.
   const local = (e: { clientX: number; clientY: number }): Point => {
-    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.current!.getScreenCTM()!.inverse())
+    const p = toSvg(svg.current!, e.clientX, e.clientY)
     return { x: p.x - CX, y: p.y - CY }
   }
 
@@ -101,7 +104,7 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
       const t0 = performance.now()
       let q = 0
       const tick = (now: number) => {
-        if (!alive.current) return stop()
+        if (!alive.current) return stop(GONE)
         const t = (now - t0) / 1000
         for (; q < quarters.length && quarters[q] <= t; q++) play('rustle', sp.dir)
         const a = reduce ? finalAngle(sp) : angleAt(sp, t)
@@ -195,7 +198,13 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
     say('done', resultLine(cur))
     setPhase('done')
   }
-  const start = (youFirst: boolean) => void run(youFirst).catch(() => {}) // rejects only when the page is left mid-match
+  const start = (youFirst: boolean) => {
+    run(youFirst).catch((err) => {
+      if (err === GONE) return // the page was left mid-match
+      console.error('cricket failed', err)
+      onExit()
+    })
+  }
 
   // You bat: press = pen touches down, release = pen lifted (the drift grows with the hold).
   const lidDown = (e: RPointerEvent<HTMLDivElement>) => {

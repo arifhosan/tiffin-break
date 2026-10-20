@@ -1,9 +1,10 @@
-import { useRef, useState, type Dispatch, type KeyboardEvent, type PointerEvent, type SetStateAction } from 'react'
+import { memo, useRef, useState, type Dispatch, type KeyboardEvent, type PointerEvent, type SetStateAction } from 'react'
 import { type ItemId, type Saved } from '../storage'
 import { strings } from '../strings'
 import { makeRng } from '../rng'
 import { wobblyCircle } from '../ink'
 import { play } from '../sound'
+import { toSvg } from '../geom'
 import { Settings } from '../Settings'
 import { ITEM_ART, ItemDefs } from './items'
 import { BENCH_H, BENCH_W, addStroke, eraseAt, moveItem } from './model'
@@ -30,7 +31,7 @@ const STAIN = wobblyCircle(512, 118, 17, rng, 5)
 const DROPS = [[540, 98, 3], [494, 142, 2.2], [536, 140, 1.6]]
 const path = (pts: P[]) => 'M' + pts.map((p) => p.map((n) => n.toFixed(1)).join(',')).join(' L')
 
-function Board() {
+const Board = memo(function Board() {
   return (
     <g aria-hidden="true">
       <rect width={BENCH_W} height={BENCH_H} rx={10} fill="var(--wood)" />
@@ -60,19 +61,23 @@ function Board() {
       <rect width={BENCH_W} height={BENCH_H} rx={10} fill="none" stroke="var(--wood-seam)" strokeWidth={6} />
     </g>
   )
-}
+})
+
+const Strokes = memo(function Strokes({ strokes }: { strokes: Saved['strokes'] }) {
+  return <>{strokes.map((s) => <path key={s.id} d={path(s.pts)} />)}</>
+})
 
 export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
   const svg = useRef<SVGSVGElement>(null)
   const [mode, setMode] = useState<Mode>('move')
   const [order, setOrder] = useState(IDS)
-  const [live, setLive] = useState<P[] | null>(null)
+  const liveEl = useRef<SVGPathElement>(null) // the stroke being drawn: set directly, no React re-render
   const [wiggle, setWiggle] = useState(0)
   const [settings, setSettings] = useState(false)
   const g = useRef<{ id?: ItemId; sx: number; sy: number; dx: number; dy: number; moved: boolean; pts?: P[] } | null>(null)
 
   const toBench = (e: { clientX: number; clientY: number }): P => {
-    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.current!.getScreenCTM()!.inverse())
+    const p = toSvg(svg.current!, e.clientX, e.clientY)
     return [p.x, p.y]
   }
   const panOf = (id: ItemId) => saved.items[id].x / (BENCH_W / 2) - 1
@@ -99,7 +104,6 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
       setOrder((o) => [...o.filter((k) => k !== id), id])
     } else if (mode === 'draw') {
       g.current = { ...at, pts: [[x, y]] }
-      setLive([[x, y]])
       play('scratch', x / (BENCH_W / 2) - 1)
     } else {
       g.current = at
@@ -114,14 +118,14 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
     c.moved = true
     const [x, y] = toBench(e)
     if (c.id) { const id = c.id; setSaved((s) => moveItem(s, id, x + c.dx, y + c.dy)) }
-    else if (c.pts) { c.pts.push([x, y]); setLive([...c.pts]) }
+    else if (c.pts) { c.pts.push([x, y]); if (c.pts.length > 1) liveEl.current?.setAttribute('d', path(c.pts)) }
     else setSaved((s) => eraseAt(s, { x, y }, ERASE_R))
   }
 
   const up = (cancel: boolean) => {
     const c = g.current
     g.current = null
-    setLive(null)
+    liveEl.current?.setAttribute('d', '')
     if (!c || cancel) return
     if (c.id) c.moved ? play('thud', panOf(c.id)) : tap(c.id)
     else if (c.pts) { const pts = c.pts; setSaved((s) => addStroke(s, pts, `s${Date.now()}`)) }
@@ -153,8 +157,8 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
         <defs><ItemDefs /></defs>
         <Board />
         <g className="strokes" fill="none" stroke="var(--ink)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          {saved.strokes.map((s) => <path key={s.id} d={path(s.pts)} />)}
-          {live && live.length > 1 && <path d={path(live)} />}
+          <Strokes strokes={saved.strokes} />
+          <path ref={liveEl} />
         </g>
         {order.map((id) => {
           const it = saved.items[id]

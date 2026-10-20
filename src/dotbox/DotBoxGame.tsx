@@ -1,6 +1,6 @@
 import { memo, useContext, type ReactNode, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
-import type { Point, Side } from '../geom'
+import { toSvg, type Point, type Side } from '../geom'
 import { wobblyLine } from '../ink'
 import { Page } from '../Page'
 import { useReducedMotion } from '../motion'
@@ -168,9 +168,8 @@ function Match({ name, onBest, onExit, onAgain, size, setSize }: GameProps & { o
   const up = (e: RPointerEvent<SVGRectElement>) => { // a drag counts by its end point; a tap is its own end point
     const done = edgeWait.current
     if (!done) return
-    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.current!.getScreenCTM()!.inverse())
     edgeWait.current = null
-    done({ x: p.x, y: p.y })
+    done(toSvg(svg.current!, e.clientX, e.clientY))
   }
   const geo = useMemo(() => geoOf(size.rows, size.cols), [size.rows, size.cols])
   const turnText = step === 'cpu' ? s.cpuTurn : s.yourTurn

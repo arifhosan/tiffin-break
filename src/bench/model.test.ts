@@ -44,6 +44,10 @@ describe('bench model', () => {
     expect(eraseAt(s, { x: 50, y: 5 }).strokes).toHaveLength(0)
     expect(eraseAt(s, { x: 50, y: 20 }).strokes).toHaveLength(1)
   })
+  it('eraseAt returns the same object when nothing is hit', () => {
+    const s = addStroke(DEFAULT_SAVED, [[0, 0], [100, 0]], 'a')
+    expect(eraseAt(s, { x: 50, y: 90 })).toBe(s)
+  })
   it('resetBench keeps name', () => {
     const s = resetBench({ ...moveItem(DEFAULT_SAVED, 'pen', 1, 1), name: 'Rafi' })
     expect(s.name).toBe('Rafi')

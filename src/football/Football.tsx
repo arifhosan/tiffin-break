@@ -1,6 +1,6 @@
 import { memo, useContext, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { dist, type Point, type Side } from '../geom'
+import { dist, toSvg, type Point, type Side } from '../geom'
 import { wobblyCircle, wobblyLine } from '../ink'
 import { Page } from '../Page'
 import { useReducedMotion } from '../motion'
@@ -111,22 +111,23 @@ const Players = memo(function Players({ dots }: { dots: Dot[] }) {
 })
 
 // Every pen line stays on the page. Only a newly mounted one animates, so the old ones cost nothing on later renders.
+// Each line is its own memo: trail objects keep their identity, so an old line never recomputes its wobble.
+const TrailLine = memo(function TrailLine({ t, seed }: { t: Trail; seed: number }) {
+  return (
+    <g className="fb-trail" stroke={inkOf(t.team)}>
+      <path className="ck-draw" d={wobblyLine(t.from.x, t.from.y, t.to.x, t.to.y, makeRng(seed), 1.4)} pathLength={1} strokeWidth={1.8}
+        style={{ animationDuration: 'var(--t-ball)' }} />
+      {t.ray && (
+        <path className="ck-write" d={`M${t.ray.from.x.toFixed(1)},${t.ray.from.y.toFixed(1)} L${t.ray.to.x.toFixed(1)},${t.ray.to.y.toFixed(1)}`}
+          strokeWidth={1.6} strokeDasharray="0.5 6" style={{ animationDelay: 'var(--t-ball)' }} />
+      )}
+    </g>
+  )
+})
 const Trails = memo(function Trails({ trail, seed }: { trail: Trail[]; seed: number }) {
   return (
     <g aria-hidden="true" fill="none" strokeLinecap="round" strokeLinejoin="round">
-      {trail.map((t, i) => {
-        const r = makeRng(seed + 7 * i)
-        return (
-          <g key={i} className="fb-trail" stroke={inkOf(t.team)}>
-            <path className="ck-draw" d={wobblyLine(t.from.x, t.from.y, t.to.x, t.to.y, r, 1.4)} pathLength={1} strokeWidth={1.8}
-              style={{ animationDuration: 'var(--t-ball)' }} />
-            {t.ray && (
-              <path className="ck-write" d={`M${t.ray.from.x.toFixed(1)},${t.ray.from.y.toFixed(1)} L${t.ray.to.x.toFixed(1)},${t.ray.to.y.toFixed(1)}`}
-                strokeWidth={1.6} strokeDasharray="0.5 6" style={{ animationDelay: 'var(--t-ball)' }} />
-            )}
-          </g>
-        )
-      })}
+      {trail.map((t, i) => <TrailLine key={i} t={t} seed={seed + 7 * i} />)}
     </g>
   )
 })
@@ -259,11 +260,12 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
     say('done', `${won ? s.won.you : s.won.cpu} ${bn(cur.score.you)} – ${bn(cur.score.cpu)}`)
     setPhase('done')
   }
-  const start = (kickoff: Side) => void run(kickoff)
+  const start = (kickoff: Side) => {
+    run(kickoff).catch((err) => { console.error('football failed', err); onExit() }) // a throw drops back to the index, not a frozen page
+  }
 
   const local = (e: { clientX: number; clientY: number }): Point => {
-    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.current!.getScreenCTM()!.inverse())
-    return { x: p.x, y: p.y }
+    return toSvg(svg.current!, e.clientX, e.clientY)
   }
   const scale = () => { const k = svg.current!.getScreenCTM()!; return Math.hypot(k.a, k.b) } // screen px per page unit
   const showAim = (sh: Shot | null) => {

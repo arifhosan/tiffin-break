@@ -46,7 +46,8 @@ export function eraseAt(s: Saved, p: Point, r = 8): Saved {
       const b = pts[i + 1] ? { x: pts[i + 1][0], y: pts[i + 1][1] } : a
       return segPointDist(a, b, p).d <= r
     })
-  return { ...s, strokes: s.strokes.filter((st) => !hit(st.pts)) }
+  const strokes = s.strokes.filter((st) => !hit(st.pts))
+  return strokes.length === s.strokes.length ? s : { ...s, strokes }
 }
 
 export function resetBench(s: Saved): Saved {
