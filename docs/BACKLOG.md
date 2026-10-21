@@ -4,36 +4,33 @@ Collected on 2026-10-21 from the per-task reviews, the final whole-branch review
 
 ## Before the first public deploy
 - **P1** Play a full match of each game by hand on a real phone (Android and iPhone). Every automated check so far ran in desktop Chrome.
-- **P1** Check the rotated-spread input (cricket and football on a portrait phone) and the bench focus ring in Safari/WebKit and Firefox. It's untested outside Chrome. The checks need the Playwright WebKit/Firefox downloads, or a real iPhone. If taps are off, fix it in one place: `toSvg()` in `src/geom.ts`.
+- **P1** Check game input (portrait: upright pages, football's pitch turned inside its SVG; landscape: the spreads) and the bench focus ring in Safari/WebKit and Firefox. It's untested outside Chrome. The checks need the Playwright WebKit/Firefox downloads, or a real iPhone. If taps are off, fix it in one place: `toSvg()` in `src/geom.ts`.
 - **P2** Add an `og:image` (a nice notebook-page PNG) so Facebook and Messenger link previews look good.
 
 ## Gameplay and balance
-- **P1 Football (v2.2):**
-  - Matches run long, because the CPU often plays the ball out with short lines (one test reached 4–0 in about 150 s).
-  - Tune after a play-test. Options:
-    - make the AI value keeping possession
-    - let the out penalty depend on field position
-    - shorten the default target
-    - make throw-ins less punishing
-- **P2 Cricket:**
-  - The thin inner cells trigger LBW appeals very often.
-  - Their labels render at about 6 px on a 360 px phone with the page rotated.
-  - Consider a larger inner radius, fewer inner cells, or bigger label text.
+- **P1 Football: the CPU can basically never score** (play-test 2026-10-21, before the v2.3 roll-in). No CPU formation has a player within one line of the human goal (nearest about 250 away). Browser: CPU 0 goals in 20 possessions. Sim, first-to-3: CPU 0 goals in 532 possessions, human wins 40/40, median 151 s. That is the real reason matches "run long".
+  - Shots only score from about x 690–715 (outside the D-box); from x ≤ 650 the chance is 0%. The game gives no hint about placing a forward there.
+  - When every option scores −200, the AI picks one at random, including 33-unit lines into touch. Wobble turns about 30% of planned ray passes into outs.
+  - Sim tuning data: CPU with 2 forwards at x=100 → median 92 s, human wins 50%; plus wobble-aware AI → 82 s. First-to-1 today: 40 s.
+  - Suggested order: CPU formations with forwards in shot range; break AI ties by field position; a placement hint (e.g. "শুট করতে গোলের কাছে খেলোয়াড় রাখো"). Shorter target or softer throw-ins are secondary.
+- **P2 Cricket LBW:** 16% of all drops appeal; 33% in the inner ring vs 11% in the outer (200k-drop sim). Consider a larger inner radius or fewer inner cells.
+- **P3 Cricket on landscape phones:** the field takes half the spread, labels about 8 px (portrait is fine at 10+ px).
 - **P2 Cricket balance:** the CPU batsman is pure luck (a random point). After people have played, tune it against real human scores so the game stays winnable but not trivial. The cell-count table in `field.ts` is the main lever.
-- **P3 Dot Box:** the AI is decent but not chain-aware (no double-dealing). A harder mode could come later.
+- **P3 Dot Box:** the AI is decent but not chain-aware (no double-dealing); it beat a greedy human 19/20. A harder mode could come later.
 
 ## UX polish
 - **P2** Leaving a game mid-match (← সূচিপত্র) doesn't ask for confirmation, so progress is lost.
-- **P2 Dot Box:** after you claim a box, taps are ignored for about 0.9 s during the "ঘর পেলে!" shout, even though the status says it's your turn. Let taps through, or skip the shout for your own claims.
+- **P2 Keyboard play:** cricket (flick and lids) and Dot Box have no keyboard input at all, against the CLAUDE.md rule on interactive items.
 - **P2 Bench:** an item can be dragged half off the edge, because only its centre is clamped. Clamp by its bounding box.
 - **P2 Bench:** ink drawn over a book sits on the wood underneath, so it stays hidden until the book is moved. Maybe draw ink on top, or show a hint.
 - **P3 Name editing:** there's no cancel, and Esc closes the whole notebook.
 - **P3** The settings dialog doesn't close when you click the backdrop.
-- **P3 Dot Box:** a right-click counts as a move.
+- **P3 Dot Box:** a tap in the dead centre of a box picks one of its sides arbitrarily (the pick radius covers the whole box). On a 10x10 phone grid boxes are about 27 px.
+- **P3 Dot Box:** the result never says who won on screen (screen-reader only), and the stamp covers the board.
+- **P3 Cricket:** Play again resets the overs to 1.
 - **P3 Bench:** there's no multi-touch `pointerId` filter, so a second finger can hijack a drag.
-- **P3** The zoom-out animation is slightly off for the rotated spreads.
 - **P3** A focused and "lifted" bench item loses its lift shadow, because the focus filter overrides it.
-- **P3 Cricket scorecard:** rows can overlap if one over has 4 or more extras (wide or no-ball).
+- **P3 Cricket scorecard (desktop spread):** with 4+ extras in an over, wrapped rows hit the 2nd-innings header, and at 5 overs the innings blocks overlap. The portrait page shows the last two rows per innings and is fine.
 - **P3 Dot Box:** the crash fallback shows a "tie" result. Show an honest error message instead.
 - **P3 Football:** the error fallback returns to the index rather than to a Result screen.
 

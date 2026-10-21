@@ -39,7 +39,8 @@ npx wrangler deploy   # Cloudflare Worker static assets; only when the user says
   - an `alive` ref plus tracked timers cleared on unmount
   - `onBest` called once
   - setup and toss panels portalled into the upright layer
-- **Pointer to SVG:** always use `toSvg()` from `src/geom.ts`. It handles the CSS rotation of landscape spreads on portrait phones.
+- **Phones never need rotating.** A `GameSlot` with `tall: {W,H}` gets an upright page on portrait screens (the game picks its layout with `usePortrait()` from `src/motion.ts`). Cricket re-lays out; football draws its landscape pitch turned inside the tall SVG. Landscape spreads show on landscape screens.
+- **Pointer to SVG:** always use `toSvg()` from `src/geom.ts`, passing the element whose coordinates you want (e.g. football's turned pitch group).
 - **Persistence:** one localStorage key, `tb.v1`, accessed only through `src/storage.ts` (validated, try/catch). App saves debounced, with a flush on pagehide.
 - **Sharing:** `src/share.ts` (`svgToPng`, `shareOrDownload`).
   - Every `<text>` in a game SVG needs an explicit `fontFamily`. CSS classes don't reach the exported PNG.
@@ -59,21 +60,21 @@ npx wrangler deploy   # Cloudflare Worker static assets; only when the user says
 - **খাতায় ক্রিকেট:** a circle split into 16 wedges, each cut by an inner ring, so 32 cells. The layout is random per match.
   - The bowler spins the page. The batsman's eyes close *before* the spin, they hear it panned in stereo, then press, hold and release to drop the pen blind.
   - Off the circle is out. A line touch triggers an LBW appeal and one blind re-drop.
-- **খাতায় ফুটবল (v2.2):**
+- **খাতায় ফুটবল (v2.3):**
   - 6 fixed players per side, one of them a goalkeeper, placed first inside its own D-box.
   - The longest slingshot line is 133.
   - Up to 5 lines per possession, then the opponent gets the ball.
   - Goals count only on lines 3–5. Earlier lines are saved, and the keeper gets the ball.
+  - A line stopping within 22 short of a goal mouth, with no opponent in the way, rolls in (v2.3).
   - Touching an opponent loses the ball. Stopping in empty space sends the ball to the next player in that direction.
 - **ডট বক্স:** classic dots and boxes, grid size 2–10 by 2–10, with English initials in claimed boxes.
 
 ## Open follow-ups
 The full, prioritised list of open points, feedback and improvements is in **`docs/BACKLOG.md`**. The headlines:
-- Football matches run long under v2.2 (the CPU often plays the ball out with short lines). Gameplay tuning is pending the user's play-test.
-- The rotated-spread input and the focus ring are only verified in Chrome. Safari/Firefox checks need the user's OK to download Playwright WebKit/Firefox.
+- Football: the CPU can basically never score (no forward in shot range), which is why matches run long. Tuning plan in the backlog.
+- Game input and the focus ring are only verified in Chrome. Safari/Firefox checks need the user's OK to download Playwright WebKit/Firefox.
 - Small known issues:
-  - Cricket inner-cell labels are tiny on phones.
-  - Dot Box blocks taps for about 0.9 s during the "ঘর পেলে!" shout.
+  - Cricket and Dot Box have no keyboard play.
   - Leaving a game mid-match doesn't ask for confirmation.
   - A bench item can be dragged half off the edge.
 - The Chor-Police chit game and Pen Fight are deferred (see spec §2).
