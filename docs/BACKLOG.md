@@ -8,11 +8,7 @@ Collected on 2026-10-21 from the per-task reviews, the final whole-branch review
 - **P2** Add an `og:image` (a nice notebook-page PNG) so Facebook and Messenger link previews look good.
 
 ## Gameplay and balance
-- **P1 Football: the CPU can basically never score** (play-test 2026-10-21, before the v2.3 roll-in). No CPU formation has a player within one line of the human goal (nearest about 250 away). Browser: CPU 0 goals in 20 possessions. Sim, first-to-3: CPU 0 goals in 532 possessions, human wins 40/40, median 151 s. That is the real reason matches "run long".
-  - Shots only score from about x 690–715 (outside the D-box); from x ≤ 650 the chance is 0%. The game gives no hint about placing a forward there.
-  - When every option scores −200, the AI picks one at random, including 33-unit lines into touch. Wobble turns about 30% of planned ray passes into outs.
-  - Sim tuning data: CPU with 2 forwards at x=100 → median 92 s, human wins 50%; plus wobble-aware AI → 82 s. First-to-1 today: 40 s.
-  - Suggested order: CPU formations with forwards in shot range; break AI ties by field position; a placement hint (e.g. "শুট করতে গোলের কাছে খেলোয়াড় রাখো"). Shorter target or softer throw-ins are secondary.
+- **P2 Football balance (v2.3, sim only):** the CPU now scores in about 36% of its possessions; human wins 65% placing forwards, 55% copying the CPU formations; median first-to-3 is 66 s. Confirm by hand on a phone. From a corner, a full-length pull still only fits for about half the into-pitch directions on a 360 px phone.
 - **P2 Cricket LBW:** 16% of all drops appeal; 33% in the inner ring vs 11% in the outer (200k-drop sim). Consider a larger inner radius or fewer inner cells.
 - **P3 Cricket on landscape phones:** the field takes half the spread, labels about 8 px (portrait is fine at 10+ px).
 - **P2 Cricket balance:** the CPU batsman is pure luck (a random point). After people have played, tune it against real human scores so the game stays winnable but not trivial. The cell-count table in `field.ts` is the main lever.

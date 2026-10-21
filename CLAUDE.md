@@ -71,7 +71,7 @@ npx wrangler deploy   # Cloudflare Worker static assets; only when the user says
 
 ## Open follow-ups
 The full, prioritised list of open points, feedback and improvements is in **`docs/BACKLOG.md`**. The headlines:
-- Football: the CPU can basically never score (no forward in shot range), which is why matches run long. Tuning plan in the backlog.
+- Football v2.3 balance is tuned in simulation only; it needs a hand play-test on a phone.
 - Game input and the focus ring are only verified in Chrome. Safari/Firefox checks need the user's OK to download Playwright WebKit/Firefox.
 - Small known issues:
   - Cricket and Dot Box have no keyboard play.
