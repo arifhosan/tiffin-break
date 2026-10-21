@@ -75,6 +75,7 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
   const [wiggle, setWiggle] = useState(0)
   const [settings, setSettings] = useState(false)
   const g = useRef<{ id?: ItemId; sx: number; sy: number; dx: number; dy: number; moved: boolean; pts?: P[] } | null>(null)
+  const tapped = useRef<ItemId | null>(null) // a tap acts on click, after the touch's ghost click, so it can't land on the cover
 
   const toBench = (e: { clientX: number; clientY: number }): P => {
     const p = toSvg(svg.current!, e.clientX, e.clientY)
@@ -93,6 +94,7 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
   }
 
   const down = (e: PointerEvent<SVGSVGElement>) => {
+    tapped.current = null
     if (e.button !== 0) return
     const id = (e.target as Element).closest<SVGGElement>('[data-item]')?.dataset.item as ItemId | undefined
     if (!id && mode === 'move') return
@@ -101,7 +103,6 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
     const at = { sx: e.clientX, sy: e.clientY, dx: 0, dy: 0, moved: false }
     if (id) {
       g.current = { ...at, id, dx: saved.items[id].x - x, dy: saved.items[id].y - y }
-      setOrder((o) => [...o.filter((k) => k !== id), id])
     } else if (mode === 'draw') {
       g.current = { ...at, pts: [[x, y]] }
       play('scratch', x / (BENCH_W / 2) - 1)
@@ -115,6 +116,8 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
     const c = g.current
     if (!c) return
     if (c.id && !c.moved && Math.hypot(e.clientX - c.sx, e.clientY - c.sy) < TAP_PX) return
+    // raise on drag, not on press: moving the node under a press makes Chrome drop the click a tap waits for
+    if (c.id && !c.moved) { const id = c.id; setOrder((o) => [...o.filter((k) => k !== id), id]) }
     c.moved = true
     const [x, y] = toBench(e)
     if (c.id) { const id = c.id; setSaved((s) => moveItem(s, id, x + c.dx, y + c.dy)) }
@@ -127,7 +130,7 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
     g.current = null
     liveEl.current?.setAttribute('d', '')
     if (!c || cancel) return
-    if (c.id) c.moved ? play('thud', panOf(c.id)) : tap(c.id)
+    if (c.id) c.moved ? play('thud', panOf(c.id)) : (tapped.current = c.id)
     else if (c.pts) { const pts = c.pts; setSaved((s) => addStroke(s, pts, `s${Date.now()}`)) }
   }
 
@@ -153,7 +156,8 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
         <p className="hint" aria-live="polite">{hint}</p>
       </header>
       <svg ref={svg} className="bench" data-mode={mode} viewBox={`0 0 ${BENCH_W} ${BENCH_H}`} role="group" aria-label={strings.bench.board}
-        onPointerDown={down} onPointerMove={move} onPointerUp={() => up(false)} onPointerCancel={() => up(true)}>
+        onPointerDown={down} onPointerMove={move} onPointerUp={() => up(false)} onPointerCancel={() => up(true)}
+        onClick={() => { const id = tapped.current; tapped.current = null; if (id) tap(id) }}>
         <defs><ItemDefs /></defs>
         <Board />
         <g className="strokes" fill="none" stroke="var(--ink)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
