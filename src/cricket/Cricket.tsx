@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef, useState, type PointerEvent as RPointerE
 import { createPortal } from 'react-dom'
 import { toSvg, type Point } from '../geom'
 import { Page } from '../Page'
-import { useReducedMotion } from '../motion'
+import { usePortrait, useReducedMotion } from '../motion'
 import { makeRng } from '../rng'
 import { shareOrDownload } from '../share'
 import { play } from '../sound'
@@ -19,6 +19,12 @@ import { Scorecard } from './Scorecard'
 
 export const W = 800
 export const H = 560
+/**
+ * The upright page on a portrait phone: the scorecard header on top, the field near full width, the innings under it.
+ * The wheel keeps its spread coordinates and is shifted by OFF, so spin.ts and Wheel.tsx don't change.
+ */
+export const TALL = { W: 400, H: 756 }
+const OFF = { x: 200 - CX, y: 290 - CY } // wheel centre (200, 290): circle from y 100 to 480
 const s = strings.cricket
 const LID_MS = 450 // eyelids closing or opening (the CSS transition is --t-lid)
 const LISTEN_MS = 500 // dark and quiet for a moment before the bowl
@@ -58,6 +64,11 @@ const GONE = new Error('page left')
 function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => void }) {
   const layer = useContext(ResultLayer)
   const reduce = useReducedMotion()
+  const tall = usePortrait()
+  const off = tall ? OFF : { x: 0, y: 0 }
+  const page = tall ? TALL : { W, H }
+  const fieldBox = tall ? { x: 0, y: 96, width: 400, height: 410 } : { x: 400, y: 0, width: 400, height: H } // pen ink stays in here
+  const cx = CX + off.x
   const svg = useRef<SVGSVGElement>(null)
   const wheel = useRef<SVGGElement>(null)
   const panel = useRef<HTMLDivElement>(null)
@@ -93,7 +104,7 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
   // CSS rotation of the spread on a portrait phone.
   const local = (e: { clientX: number; clientY: number }): Point => {
     const p = toSvg(svg.current!, e.clientX, e.clientY)
-    return { x: p.x - CX, y: p.y - CY }
+    return { x: p.x - cx, y: p.y - CY - off.y }
   }
 
   // The page turns: rAF samples angleAt, a rustle on every quarter turn (panned to the spin's side), a thud at the stop.
@@ -249,28 +260,31 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
 
   return (
     <>
-      <Page ref={svg} width={W} height={H}>
-        <line x1={400} x2={400} y1={0} y2={H} stroke="var(--shade)" strokeWidth={3} />
-        <Scorecard m={m} overs={overs} name={name} result={m && phase === 'done' ? resultLine(m) : ''} />
+      <Page ref={svg} width={page.W} height={page.H}>
+        {!tall && <line x1={400} x2={400} y1={0} y2={H} stroke="var(--shade)" strokeWidth={3} />}
+        <Scorecard m={m} overs={overs} name={name} result={m && phase === 'done' ? resultLine(m) : ''} tall={tall} />
         <title>{s.field}</title>
-        <clipPath id="ck-field-page"><rect x={400} y={0} width={400} height={H} /></clipPath>
+        <clipPath id="ck-field-page"><rect {...fieldBox} /></clipPath>
         {m && (
           <g clipPath="url(#ck-field-page)">{/* a pen that misses the page leaves no ink on the scorecard */}
-            <FieldWheel ref={wheel} field={m.field} seed={seed} angle={shownAngle} dots={dots} flash={flash} />
+            <g transform={`translate(${off.x} ${off.y})`}>
+              <FieldWheel ref={wheel} field={m.field} seed={seed} angle={shownAngle} dots={dots} flash={flash} />
+            </g>
           </g>
         )}
         {step === 'flick' && (
-          <rect className="ck-flick" x={400} y={0} width={400} height={H} fill="transparent"
+          <rect className="ck-flick" {...fieldBox} fill="transparent"
             onPointerDown={flickDown} onPointerMove={flickMove} onPointerUp={flickUp} onPointerCancel={() => (trail.current = [])} />
         )}
         {shoutOnPage && (
           <g className="ck-shout" fill={shout.text === strings.shout.out ? 'var(--stamp)' : 'var(--ink)'} textAnchor="middle" aria-hidden="true">
-            <text x={CX} y={66} fontSize={52} fontFamily="'Galada', 'Atma', sans-serif">{shout.text}</text>
-            {shout.sub && <text x={CX} y={90} fontSize={20} fontFamily="'Atma', sans-serif">{shout.sub}</text>}
+            {tall && <rect width={400} height={96} fill="var(--paper)" />}{/* over the header while it shouts */}
+            <text x={cx} y={66} fontSize={52} fontFamily="'Galada', 'Atma', sans-serif">{shout.text}</text>
+            {shout.sub && <text x={cx} y={90} fontSize={20} fontFamily="'Atma', sans-serif">{shout.sub}</text>}
           </g>
         )}
         {phase === 'play' && lids === 'open' && prompt && step !== 'reveal' && step !== 'break' && (
-          <text x={CX} y={530} textAnchor="middle" fontSize={20} fontFamily="'Atma', sans-serif" fill="var(--ink)" aria-hidden="true">{prompt}</text>
+          <text x={cx} y={tall ? 504 : 530} textAnchor="middle" fontSize={20} fontFamily="'Atma', sans-serif" fill="var(--ink)" aria-hidden="true">{prompt}</text>
         )}
       </Page>
       <p className="sr-only" role="status" data-step={step}>{prompt}</p>

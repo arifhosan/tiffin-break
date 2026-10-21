@@ -289,6 +289,7 @@ body {
   .stage[data-landscape] { --zw: min(100dvh - 88px, 92vw * var(--ar)); }
   .stage[data-landscape] .zoom { transform: translate(-50%, -50%) rotate(90deg); }
   .stage[data-landscape] .zoom-layer { width: calc(var(--zw) / var(--ar)); height: var(--zw); }
+  .stage[data-tall] { --zw: min(100vw - 12px, (100dvh - 88px) * var(--ar)); } /* an upright game page: near full width */
 }
 .back { position: fixed; top: 16px; left: 16px; z-index: 1; }
 

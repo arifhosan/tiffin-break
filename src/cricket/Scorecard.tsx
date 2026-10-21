@@ -6,7 +6,7 @@ const ATMA = "'Atma', sans-serif"
 const NAME = "'Patrick Hand', 'Atma', sans-serif"
 const X0 = 50 // just right of the red margin
 const COLS = 9 // marks per written row
-const COL_W = 34
+const COL_W = 30 // nine marks end at x 368: clear of the fold and of the tall page's edge
 const s = strings.cricket
 
 const mark = (o: BallOutcome) =>
@@ -20,7 +20,9 @@ function Who({ side, name }: { side: Side; name: string }) {
 }
 
 // One innings: header line with the total, then the balls in rows of overs (an over with extras wraps).
-function InningsBlock({ inn, i, y, gap, name, tgt }: { inn: Innings; i: number; y: number; gap: number; name: string; tgt: number | null }) {
+// `keep` keeps only the latest rows and `first` is the line the rows start on (the tall page is short of room).
+function InningsBlock({ inn, i, y, gap, name, tgt, keep, first }:
+  { inn: Innings; i: number; y: number; gap: number; name: string; tgt: number | null; keep: number; first: number }) {
   const rows: { over: number | null; marks: BallOutcome[] }[] = []
   let legal = 0
   let last = -1
@@ -43,15 +45,15 @@ function InningsBlock({ inn, i, y, gap, name, tgt }: { inn: Innings; i: number; 
       {tgt !== null && (
         <text x={388} y={y + 18} fontSize={14} fontFamily={ATMA} textAnchor="end">{s.target} {bn(tgt)}</text>
       )}
-      {rows.map((r, k) => (
+      {rows.slice(-keep).map((r, k) => (
         <g key={k}>
           {r.over !== null && (
-            <text x={X0} y={y + gap * (k + 1)} fontSize={14} fontFamily={ATMA} fill="var(--ink-off)">
+            <text x={X0} y={y + gap * (k + first)} fontSize={14} fontFamily={ATMA} fill="var(--ink-off)">
               {s.overs} {bn(r.over + 1)}
             </text>
           )}
           {r.marks.map((o, j) => (
-            <text key={j} x={X0 + 78 + j * COL_W} y={y + gap * (k + 1)} textAnchor="middle" fontFamily={ATMA}
+            <text key={j} x={X0 + 78 + j * COL_W} y={y + gap * (k + first)} textAnchor="middle" fontFamily={ATMA}
               fontSize={o.kind === 'out' ? 14 : o.kind === 'extra' ? 13 : 19}
               fill={o.kind === 'out' ? 'var(--stamp)' : 'var(--ink)'}>
               {mark(o)}
@@ -63,10 +65,14 @@ function InningsBlock({ inn, i, y, gap, name, tgt }: { inn: Innings; i: number; 
   )
 }
 
-/** The left page: a handwritten ball-by-ball ledger. Baselines sit on the 18-unit rules. */
-export function Scorecard({ m, overs, name, result }: { m: CricketMatch | null; overs: number; name: string; result: string }) {
-  const gap = overs === 5 ? 18 : 36
-  const block = 54 + gap * (overs + 1)
+/**
+ * The left page: a handwritten ball-by-ball ledger. Baselines sit on the 18-unit rules.
+ * `tall`: the upright phone page, the header on top and the innings under the field, with only the last two rows each.
+ */
+export function Scorecard({ m, overs, name, result, tall }: { m: CricketMatch | null; overs: number; name: string; result: string; tall: boolean }) {
+  const gap = tall || overs === 5 ? 18 : 36
+  const block = tall ? 90 : 54 + gap * (overs + 1)
+  const y0 = tall ? 558 : 140
   return (
     <g>
       <text x={X0} y={50} fontSize={34} fontFamily="'Galada', 'Atma', sans-serif" fill="var(--ink)">{strings.game.cricket}</text>
@@ -74,10 +80,11 @@ export function Scorecard({ m, overs, name, result }: { m: CricketMatch | null; 
         <Who side="you" name={name} /> {s.vs} {s.cpu} · {bn(overs)} {s.overs}, {bn(WICKETS[overs as 1 | 2 | 5])} {s.wickets}
       </text>
       {m?.innings.map((inn, i) => (
-        <InningsBlock key={i} inn={inn} i={i} y={140 + i * block} gap={gap} name={name} tgt={i === 1 ? m.innings[0].runs + 1 : null} />
+        <InningsBlock key={i} inn={inn} i={i} y={y0 + i * block} gap={gap} name={name} tgt={i === 1 ? m.innings[0].runs + 1 : null}
+          keep={tall ? 2 : Infinity} first={tall ? 2 : 1} />
       ))}
       {result && (
-        <text x={X0} y={518} fontSize={26} fontFamily="'Galada', 'Atma', sans-serif" fill="var(--stamp)">{result}</text>
+        <text x={X0} y={tall ? 738 : 518} fontSize={26} fontFamily="'Galada', 'Atma', sans-serif" fill="var(--stamp)">{result}</text>
       )}
     </g>
   )

@@ -40,10 +40,13 @@ function CellLabel({ l, ring, w }: { l: Label; ring: 'inner' | 'outer'; w: numbe
   return (
     <g transform={`translate(${(r * Math.cos(a)).toFixed(1)} ${(r * Math.sin(a)).toFixed(1)}) rotate(${deg.toFixed(1)})`}
       fill={fill} fontFamily={FONT} textAnchor="middle" dominantBaseline="central">
-      {l.kind === 'out' ? (
+      {l.kind === 'out' && inner ? (
+        // too narrow for two lines a phone can read: the red "how" alone says out
+        <text fontSize={size} fontFamily={FONT}>{strings.cricket.how[l.how]}</text>
+      ) : l.kind === 'out' ? (
         <>
-          <text y={inner ? -5 : -8} fontSize={size} fontFamily={FONT}>{text(l)}</text>
-          <text y={inner ? 6 : 9} fontSize={inner ? 9 : 13} fontFamily={FONT}>{strings.cricket.how[l.how]}</text>
+          <text y={-8} fontSize={size} fontFamily={FONT}>{text(l)}</text>
+          <text y={9} fontSize={13} fontFamily={FONT}>{strings.cricket.how[l.how]}</text>
         </>
       ) : (
         <text fontSize={size} fontFamily={FONT}>{text(l)}</text>

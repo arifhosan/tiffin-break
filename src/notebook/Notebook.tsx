@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { recordBest, type Saved } from '../storage'
 import { bn, strings } from '../strings'
-import { useReducedMotion } from '../motion'
+import { usePortrait, useReducedMotion } from '../motion'
 import { play } from '../sound'
 import { Notebook as Khata } from '../bench/items'
 import { ResultLayer } from '../games/Result'
@@ -20,7 +20,7 @@ type View = 'cover' | 'index' | GameId
  * The game SVG is what gets shared (svgToPng): every <text> needs an explicit fontFamily, and CSS classes don't reach the image.
  */
 export const games: Record<GameId, GameSlot> = {
-  cricket: { W: Cricket.W, H: Cricket.H, landscape: true, Game: Cricket.Cricket },
+  cricket: { W: Cricket.W, H: Cricket.H, landscape: true, tall: Cricket.TALL, Game: Cricket.Cricket },
   football: { W: Football.W, H: Football.H, landscape: true, Game: Football.Football },
   dotbox: { W: DotBox.W, H: DotBox.H, Game: DotBox.DotBoxGame },
 }
@@ -47,6 +47,7 @@ export function Notebook({ saved, setSaved, onClose }: Props) {
   const timer = useRef(0)
   const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const reduce = useReducedMotion()
+  const portrait = usePortrait()
   const [view, setView] = useState<View>('cover')
   const [editing, setEditing] = useState(!saved.name)
   const game = view === 'cover' || view === 'index' ? null : view
@@ -110,6 +111,9 @@ export function Notebook({ saved, setSaved, onClose }: Props) {
   }
 
   const Game = game && games[game].Game
+  const slot = game && games[game]
+  const tall = !!(portrait && slot?.tall)
+  const size = (tall && slot?.tall) || slot
 
   return (
     <dialog ref={dlg} className="nb" aria-label={strings.bench.notebook} data-game={game ?? undefined}
@@ -155,8 +159,8 @@ export function Notebook({ saved, setSaved, onClose }: Props) {
       {game && Game && (
         <>
           <button type="button" className="btn on-dark back" onClick={leave} autoFocus>{strings.back}</button>
-          <div className="stage" data-landscape={games[game].landscape || undefined}
-            style={{ '--ar': games[game].W / games[game].H } as CSSProperties}>
+          <div className="stage" data-landscape={(games[game].landscape && !tall) || undefined} data-tall={tall || undefined}
+            style={{ '--ar': size!.W / size!.H } as CSSProperties}>
             <div ref={zoom} className="zoom">
               <ResultLayer.Provider value={layer}>
                 {layer && <Game name={saved.name} onBest={(v) => setSaved((s) => recordBest(s, game, v))} onExit={leave} />}
