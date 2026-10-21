@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { toSvg, type Point, type Side } from '../geom'
 import { wobblyLine } from '../ink'
 import { Page } from '../Page'
-import { useReducedMotion } from '../motion'
 import { initialOf } from '../name'
 import { makeRng } from '../rng'
 import { shareOrDownload } from '../share'
@@ -20,16 +19,15 @@ const s = strings.dotbox
 const c = strings.cricket // shared match words: নতুন ম্যাচ, টস করো, খেলা শুরু, তুমি, সিপিইউ
 const ATMA = "'Atma', sans-serif"
 const HAND = "'Patrick Hand', 'Atma', sans-serif"
-const GALADA = "'Galada', 'Atma', sans-serif"
 const CPU_MS = 500 // the CPU thinks before drawing
-const SHOUT_MS = 900
+const SHOUT_MS = 900 // the claim cue in the score line; it never holds up a turn
 const MIN = 2
 const MAX = 10
 // the grid sits right of the margin line, under the score, above the prompt
 const AREA = { x: 64, y: 76, w: 496, h: 660 }
 
 type Phase = 'setup' | 'toss' | 'cpuToss' | 'play' | 'done'
-type Step = 'move' | 'cpu' | 'shout' | 'done'
+type Step = 'move' | 'cpu' | 'done'
 
 const inkOf = (t: Side) => (t === 'you' ? 'var(--ink)' : 'var(--ink-black)')
 const halo = { stroke: 'var(--paper)', strokeWidth: 6, strokeLinejoin: 'round', paintOrder: 'stroke' } as const
@@ -88,13 +86,13 @@ type Size = { rows: number; cols: number }
 
 function Match({ name, onBest, onExit, onAgain, size, setSize }: GameProps & { onAgain: () => void; size: Size; setSize: (z: Size) => void }) {
   const layer = useContext(ResultLayer)
-  const reduce = useReducedMotion()
   const svg = useRef<SVGSVGElement>(null)
   const panel = useRef<HTMLDivElement>(null)
   const [rng] = useState(() => makeRng(Date.now())) // one per match; the rules stay pure
   const alive = useRef(true)
   const timers = useRef(new Set<number>())
   const edgeWait = useRef<((p: Point) => void) | null>(null)
+  const shoutT = useRef(0)
   const mine = initialOf(name)
 
   const [phase, setPhase] = useState<Phase>('setup')
@@ -146,10 +144,11 @@ function Match({ name, onBest, onExit, onAgain, size, setSize }: GameProps & { o
       play('scratch')
       if (cur.score[who] > before && dotBoxWinner(cur) === null) {
         setShout(who === 'you' ? s.gotYou : s.gotCpu)
-        setStep('shout')
-        await wait(reduce ? 400 : SHOUT_MS)
-        setShout(null)
-      }
+        clearTimeout(shoutT.current)
+        timers.current.delete(shoutT.current)
+        shoutT.current = window.setTimeout(() => setShout(null), SHOUT_MS)
+        timers.current.add(shoutT.current)
+      } else setShout(null) // the turn passed: show whose it is
     }
     const w = dotBoxWinner(cur)
     if (w === 'you') onBest(cur.score.you - cur.score.cpu)
@@ -196,7 +195,9 @@ function Match({ name, onBest, onExit, onAgain, size, setSize }: GameProps & { o
               <tspan fontFamily={HAND}>{mine}</tspan>
               <tspan> {bn(g.score.you)} – {bn(g.score.cpu)} </tspan>
               <tspan fill="var(--ink-black)" fontFamily={HAND}>{CPU_INITIAL}</tspan>
-              {phase === 'play' && <tspan fill={step === 'cpu' ? 'var(--ink-black)' : 'var(--ink)'}> · {turnText}</tspan>}
+              {phase === 'play' && (shout
+                ? <tspan fill="var(--stamp)" data-shout=""> · {shout}</tspan>
+                : <tspan fill={step === 'cpu' ? 'var(--ink-black)' : 'var(--ink)'}> · {turnText}</tspan>)}
             </text>
             <Boxes g={g} geo={geo} mine={mine} />
             <Lines g={g} geo={geo} seed={seed} />
@@ -206,10 +207,6 @@ function Match({ name, onBest, onExit, onAgain, size, setSize }: GameProps & { o
               )))}
             </g>
           </>
-        )}
-        {shout && (
-          <text className="ck-shout" x={W / 2} y={H / 2} textAnchor="middle" fontSize={64} fontFamily={GALADA} fill="var(--stamp)"
-            {...halo} strokeWidth={10} aria-hidden="true">{shout}</text>
         )}
         {phase === 'play' && step === 'move' && (
           <>
