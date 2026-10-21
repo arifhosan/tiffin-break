@@ -362,6 +362,10 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
           </text>
         )}
         {scoreLine}
+        {m?.phase === 'placement' && step !== 'draw' && (
+          <text x={page.W / 2} y={tall ? 152 : 60} textAnchor="middle" fontSize={18} fontFamily={ATMA} fill="var(--ink)" opacity={0.8}
+            {...halo} strokeWidth={4} aria-hidden="true" data-hint>{s.hint}</text>
+        )}
         {shout && (
           <text className="ck-shout" x={page.W / 2} y={page.H / 2 + 18} textAnchor="middle" fontSize={shout === strings.shout.goal ? 84 : 52}
             fontFamily={GALADA} fill={shout === strings.shout.goal ? 'var(--stamp)' : 'var(--ink)'} {...halo} strokeWidth={10} aria-hidden="true">

@@ -28,7 +28,7 @@ describe('resolvePass', () => {
   })
   it('goes out through the top edge', () => {
     const r = resolvePass([you('a', 400, 100)], 'a', { x: 400, y: 100 }, { x: 400, y: -50 }, 'you')
-    expect(r).toMatchObject({ kind: 'out', at: { x: 400, y: 0 }, restart: { x: 400, y: 10 } })
+    expect(r).toMatchObject({ kind: 'out', at: { x: 400, y: 0 }, restart: { x: 400, y: 100 } })
   })
   it('opponent in front of the goal intercepts, not goal', () => {
     const r = resolvePass([you('a', 600, 250), cpu('c', 770, 250)], 'a', { x: 600, y: 250 }, { x: 820, y: 250 }, 'you')
@@ -44,7 +44,7 @@ describe('resolvePass', () => {
   })
   it('ray through the mouth is out, not goal', () => {
     const r = resolvePass([you('a', 500, 250)], 'a', { x: 500, y: 250 }, { x: 600, y: 250 }, 'you')
-    expect(r).toMatchObject({ kind: 'out', at: { x: 800, y: 250 }, restart: { x: 790, y: 250 }, ray: { from: { x: 600, y: 250 }, to: { x: 800, y: 250 } } })
+    expect(r).toMatchObject({ kind: 'out', at: { x: 800, y: 250 }, restart: { x: 700, y: 250 }, ray: { from: { x: 600, y: 250 }, to: { x: 800, y: 250 } } })
   })
   it('a line stopping within 22 short of the mouth rolls in (I2)', () => {
     const r = resolvePass([you('a', 680, 200)], 'a', { x: 680, y: 200 }, { x: 785, y: 200 }, 'you')
@@ -56,7 +56,11 @@ describe('resolvePass', () => {
   })
   it('zero-length tap with no own dot nearby is out', () => {
     const r = resolvePass([you('a', 5, 5)], 'a', { x: 5, y: 5 }, { x: 5, y: 5 }, 'you')
-    expect(r).toMatchObject({ kind: 'out', at: { x: 5, y: 5 }, restart: { x: 10, y: 10 } })
+    expect(r).toMatchObject({ kind: 'out', at: { x: 5, y: 5 }, restart: { x: 100, y: 100 } })
+  })
+  it('a corner out restarts 100 in from both lines, room for a full pull on a phone', () => {
+    const r = resolvePass([you('a', 760, 460)], 'a', { x: 760, y: 460 }, { x: 830, y: 530 }, 'you')
+    expect(r).toMatchObject({ kind: 'out', at: { x: 800, y: 500 }, restart: { x: 700, y: 400 } })
   })
 })
 

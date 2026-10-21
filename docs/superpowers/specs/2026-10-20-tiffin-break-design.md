@@ -168,7 +168,8 @@ A browser game that recreates the pen-and-paper games Bangladeshi students playe
 ### Placement
 - Players are placed one at a time, alternating, starting with you. Each side's **first** placement is its goalkeeper and must be inside its own D-box [user, v2.2].
 - Every other player can go **anywhere on the pitch** outside both D-boxes, at least 10 from the edge and at least 30 from any other player. Own-half-only would make goals almost impossible, because every pass would end deep in your own half [call].
-- The CPU places from 3 formation templates, with ±15 jitter.
+- The CPU places from 3 formation templates, with ±15 jitter. Each has two forwards within shot range of the human goal [call, v2.3].
+- During placement a hint reads "শুট করতে গোলের কাছে খেলোয়াড় রাখো" [call, v2.3].
 - The ball starts on the centre spot (400, 250), and the toss winner kicks off.
 
 ### One pass [call]
@@ -180,7 +181,7 @@ A browser game that recreates the pen-and-paper games Bangladeshi students playe
 Walk the segment from start to end. The **earliest** of these events wins:
 1. **ট্যাকল (interception):** an opponent player within 12 of the segment. The opponent gets the ball **at the touch point** [md].
 2. **গোল:** the line crosses a goal line inside the mouth **on line 3, 4 or 5 of the possession**. Through your own goal, it counts for the opponent [call]. On lines 1–2 (which includes every kick-off and throw-in line) a line entering a goal mouth is **saved**: the defending goalkeeper gets the ball [user, v2.2].
-3. **আউট:** the line leaves the pitch anywhere else → **a throw-in to the opponent from where it went out**, with the ball placed 10 units inside the line [md].
+3. **আউট:** the line leaves the pitch anywhere else → **a throw-in to the opponent from where it went out**, with the ball placed at least 100 units from every line, so a corner out moves inward on both axes and a phone has room to pull back [user, v2.3; was 10, md].
 
 The player the pass starts from is ignored. Your own players along the line are passed over [call].
 
@@ -200,10 +201,10 @@ If none of those happen, look at the end point:
 ### Match
 - First to ১ / ৩ / ৫ goals (default ১) [user options, default call].
 - After a goal, the ball goes back to the centre spot and the side that conceded kicks off.
-- **CPU passing:** try 72 angles × 4 lengths through the resolver without wobble, then score each:
+- **CPU passing:** try 72 angles × 4 lengths through the resolver, each averaged over 12 fixed wobble samples, then score each:
   - goal = 1000
   - complete = 100 + progress toward the goal
-  - intercepted or out = −200
+  - intercepted or out = −200 + 0.1 × the distance from the CPU's own goal (lose it upfield, not at home) [call, v2.3]
 
   Pick the best, breaking ties with the RNG, then apply wobble.
   - On its 5th line, the CPU scores only goals and the chance of losing the ball near its own goal, because a completed pass is worthless on the last line [call].

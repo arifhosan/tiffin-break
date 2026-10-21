@@ -1,12 +1,15 @@
 import { dist, type Point } from '../geom'
-import type { FootballMatch } from './match'
+import { makeRng } from '../rng'
+import { applyWobble, type FootballMatch } from './match'
 import { DBOX, H, MAX_LEN, W, resolvePass, shotEnd, validPlacement, type PassResult } from './rules'
 
 // Five outfield cpu positions each, after the keeper (cpu defends x = 800, attacks x = 0).
+// Each has two forwards in shot range of the human goal (shots only go in from about x <= 110), and the
+// first point tells the templates apart (aiPlace re-derives the template from it).
 export const FORMATIONS: Point[][] = [
-  [{ x: 700, y: 80 }, { x: 700, y: 420 }, { x: 520, y: 250 }, { x: 380, y: 120 }, { x: 380, y: 380 }],
-  [{ x: 600, y: 100 }, { x: 600, y: 250 }, { x: 600, y: 400 }, { x: 350, y: 175 }, { x: 350, y: 325 }],
-  [{ x: 690, y: 250 }, { x: 500, y: 60 }, { x: 500, y: 440 }, { x: 400, y: 250 }, { x: 250, y: 130 }],
+  [{ x: 100, y: 200 }, { x: 100, y: 300 }, { x: 230, y: 250 }, { x: 380, y: 120 }, { x: 380, y: 380 }],
+  [{ x: 600, y: 250 }, { x: 110, y: 170 }, { x: 110, y: 330 }, { x: 250, y: 120 }, { x: 350, y: 300 }],
+  [{ x: 690, y: 250 }, { x: 105, y: 205 }, { x: 105, y: 295 }, { x: 250, y: 140 }, { x: 400, y: 330 }],
 ]
 export const JITTER = 15
 const KEEPER = { x: 760, y: 250 } // the cpu keeper stands in its D-box, jittered
@@ -34,15 +37,18 @@ export function aiPlace(rng: () => number, m: FootballMatch): { x: number; y: nu
   throw new Error('no valid placement')
 }
 
-const turnover = (r: Exclude<PassResult, { kind: 'goal' }>): Point => (r.kind === 'complete' ? r.to : r.at)
-
 // counts: a goal only stands from the 3rd line on; before that it is a save, a turnover at the goal mouth.
+// Every turnover (and a pass on the last line, which hands the ball over too) scores by how far from the
+// cpu goal the opponent gets the ball, so equally bad options never pick a short line into touch.
 function score(r: PassResult, from: Point, lastLine: boolean, counts: boolean): number {
   if (r.kind === 'goal' && counts) return r.scorer === 'cpu' ? 1000 : -1000
-  if (r.kind === 'goal') return -200 + 0.1 * dist(r.at, { x: W, y: H / 2 })
-  if (lastLine) return -200 + 0.1 * dist(turnover(r), { x: W, y: H / 2 })
-  return r.kind === 'complete' ? 100 + (from.x - r.to.x) : -200
+  if (r.kind === 'complete' && !lastLine) return 100 + (from.x - r.to.x)
+  return -200 + 0.1 * dist(r.kind === 'complete' ? r.to : r.at, { x: W, y: H / 2 })
 }
+
+// The cpu's hand wobbles like yours: each candidate is scored over these fixed wobbles (the first is none),
+// so it prefers lines that still work when they land a little off.
+const WOBBLES = [{ angle: 0, length: 1 }, ...Array.from({ length: 11 }, (_, i, r = makeRng(7 + i)) => applyWobble(r, 0, 1))]
 
 export function aiPass(rng: () => number, m: FootballMatch): { angle: number; length: number } {
   const from = { x: m.ball.x, y: m.ball.y }
@@ -51,8 +57,11 @@ export function aiPass(rng: () => number, m: FootballMatch): { angle: number; le
   for (let i = 0; i < 72; i++) {
     const angle = (i / 72) * 2 * Math.PI
     for (const length of [1, 2, 3, 4].map((k) => (k * MAX_LEN) / 4)) {
-      const r = resolvePass(m.dots, m.ball.dotId, from, shotEnd(from, angle, length), 'cpu')
-      const s = score(r, from, m.lines === 4, m.lines >= 2)
+      let s = 0
+      for (const w of WOBBLES) {
+        const to = shotEnd(from, angle + w.angle, Math.min(length * w.length, MAX_LEN * 1.08))
+        s += score(resolvePass(m.dots, m.ball.dotId, from, to, 'cpu'), from, m.lines === 4, m.lines >= 2)
+      }
       if (s > best) { best = s; picks = [] }
       if (s === best) picks.push({ angle, length })
     }

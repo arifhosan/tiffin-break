@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { aiPass, aiPlace, FORMATIONS, JITTER } from './ai'
-import { newFootballMatch, place, type FootballMatch } from './match'
-import { MAX_LEN, resolvePass, shotEnd, validPlacement, type Dot } from './rules'
+import { applyPass, applyWobble, newFootballMatch, place, type FootballMatch } from './match'
+import { MAX_LEN, MOUTH, W, resolvePass, shotEnd, validPlacement, type Dot } from './rules'
 import { makeRng } from '../rng'
+import { other } from '../geom'
 
 const d = (id: string, team: 'you' | 'cpu', x: number, y: number): Dot => ({ id, team, x, y })
 const play = (dots: Dot[], x: number, y: number): FootballMatch => ({
@@ -71,5 +72,33 @@ describe('ai', () => {
       expect(cpu[0].keeper).toBe(true)
       expect(FORMATIONS.some((t) => cpu.slice(1).every((c, i) => Math.abs(c.x - t[i].x) <= JITTER && Math.abs(c.y - t[i].y) <= JITTER))).toBe(true)
     }
+  })
+  it('every template has two forwards in shot range of the human goal', () => {
+    // shots only go in from about x <= 110 (BACKLOG play-test); jitter can add 15
+    for (const t of FORMATIONS) expect(t.filter((p) => p.x <= 110 && p.y >= MOUTH[0] - 30 && p.y <= MOUTH[1] + 30).length).toBe(2)
+  })
+  it('the cpu scores in a seeded sim against its own mirror', () => {
+    // The human side plays the cpu AI mirrored (x -> W - x, teams swapped).
+    const flip = (m: FootballMatch): FootballMatch => ({
+      ...m, possession: other(m.possession), ball: { ...m.ball, x: W - m.ball.x },
+      dots: m.dots.map((d) => ({ ...d, team: other(d.team), x: W - d.x })),
+    })
+    let cpu = 0
+    for (let s = 0; s < 20; s++) {
+      const rng = makeRng(s)
+      let m = newFootballMatch(1, s % 2 ? 'you' : 'cpu')
+      while (m.phase === 'placement') {
+        const p = m.placingTurn === 'cpu' ? aiPlace(rng, m) : (({ x, y }) => ({ x: W - x, y }))(aiPlace(rng, flip(m)))
+        m = place(m, p.x, p.y)
+      }
+      for (let i = 0; i < 300 && m.phase === 'play'; i++) {
+        const p = m.possession === 'cpu' ? aiPass(rng, m) : (({ angle, length }) => ({ angle: Math.PI - angle, length }))(aiPass(rng, flip(m)))
+        const w = applyWobble(rng, p.angle, p.length)
+        const to = shotEnd(m.ball, w.angle, w.length)
+        m = applyPass(m, { x: m.ball.x, y: m.ball.y }, to, resolvePass(m.dots, m.ball.dotId, m.ball, to, m.possession))
+      }
+      cpu += m.score.cpu
+    }
+    expect(cpu).toBeGreaterThanOrEqual(5)
   })
 })
