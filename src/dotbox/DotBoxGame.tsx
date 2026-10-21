@@ -166,7 +166,7 @@ function Match({ name, onBest, onExit, onAgain, size, setSize }: GameProps & { o
   const down = (e: RPointerEvent<SVGRectElement>) => e.currentTarget.setPointerCapture(e.pointerId)
   const up = (e: RPointerEvent<SVGRectElement>) => { // a drag counts by its end point; a tap is its own end point
     const done = edgeWait.current
-    if (!done) return
+    if (!done || e.button !== 0) return // primary button or touch only
     edgeWait.current = null
     done(toSvg(svg.current!, e.clientX, e.clientY))
   }
