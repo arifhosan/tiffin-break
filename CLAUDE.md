@@ -71,7 +71,6 @@ npx wrangler deploy   # Cloudflare Worker static assets; only when the user says
 The full, prioritised list of open points, feedback and improvements is in **`docs/BACKLOG.md`**. The headlines:
 - Football matches run long under v2.2 (the CPU often plays the ball out with short lines). Gameplay tuning is pending the user's play-test.
 - The rotated-spread input and the focus ring are only verified in Chrome. Safari/Firefox checks need the user's OK to download Playwright WebKit/Firefox.
-- Before the first deploy: confirm the portfolio Worker is attached by route, not as a Custom Domain, or the `/tiffin-break*` route may be shadowed.
 - Small known issues:
   - Cricket inner-cell labels are tiny on phones.
   - Dot Box blocks taps for about 0.9 s during the "ঘর পেলে!" shout.

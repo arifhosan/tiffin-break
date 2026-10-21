@@ -3,7 +3,6 @@
 Collected on 2026-10-21 from the per-task reviews, the final whole-branch review, the hands-on play-test in Chrome, and the build process itself. Items already fixed are left out. Severity: **P1** fix before sharing widely · **P2** should fix · **P3** nice to have.
 
 ## Before the first public deploy
-- **P1** Confirm how the portfolio Worker is attached to `arifhosan.me`. If it's a Custom Domain, the `arifhosan.me/tiffin-break*` route in `wrangler.jsonc` may be shadowed. Fix: attach the portfolio by route, or proxy `/tiffin-break/*` from the portfolio Worker.
 - **P1** Play a full match of each game by hand on a real phone (Android and iPhone). Every automated check so far ran in desktop Chrome.
 - **P1** Check the rotated-spread input (cricket and football on a portrait phone) and the bench focus ring in Safari/WebKit and Firefox. It's untested outside Chrome. The checks need the Playwright WebKit/Firefox downloads, or a real iPhone. If taps are off, fix it in one place: `toSvg()` in `src/geom.ts`.
 - **P2** Add an `og:image` (a nice notebook-page PNG) so Facebook and Messenger link previews look good.
