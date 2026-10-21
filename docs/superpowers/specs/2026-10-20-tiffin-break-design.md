@@ -186,6 +186,7 @@ The player the pass starts from is ignored. Your own players along the line are 
 
 If none of those happen, look at the end point:
 4. **Your player within 22 of the end point** → the pass is complete, the ball moves to them, and **you play again** [user].
+4b. **Within 22 short of a goal mouth**, with no opponent on that last stretch → the ball **rolls in**, and rule 2 applies (goal on lines 3–5, save on 1–2). The hand wobble otherwise left about half of all shots aimed at the goal line short [call, v2.3].
 5. **Empty space** → extend the ray in the same direction. The first player of either team within 12 of the ray gets the ball [user]. If it's yours, you play again; if it's theirs, it's their play. If the ray hits nobody before the edge, it counts as rule 3 at the point where the ray leaves the pitch. That includes a ray that leaves through a goal mouth: it is not a goal, because the line itself has to go in [call].
 
 - Throw-ins and restarts after an interception start the next pass from a point, not from a player.

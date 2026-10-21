@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyPass, applyWobble, footballWinner, MAX_LINES, newFootballMatch, place, type FootballMatch } from './match'
-import { MAX_LEN, validPlacement, type Dot } from './rules'
+import { MAX_LEN, resolvePass, shotEnd, validPlacement, W, type Dot } from './rules'
 import { makeRng } from '../rng'
 
 const spots = [[40, 250], [760, 250], [100, 450], [700, 450], [300, 50], [500, 50], [300, 450], [500, 450], [300, 250], [500, 250], [200, 100], [600, 100]]
@@ -103,6 +103,23 @@ describe('applyPass', () => {
     expect(m.ball.dotId).toBe('cpu-4') // (500,250)
     expect(m.lines).toBe(0)
   })
+})
+
+// I2: a human aims so the preview line just reaches the goal line; with wobble that must still score most of the time.
+it('a human shot on line 3 that is aimed at the goal line usually scores', () => {
+  const rng = makeRng(7)
+  const shots = [[700, 120, 205], [690, 380, 295], [660, 250, 205], [730, 130, 220]] // shooter x, y, aimed mouth y
+  let goals = 0, n = 0
+  for (const [x, y, gy] of shots) {
+    const m: FootballMatch = { ...full(), lines: 2, ball: { x, y, dotId: 'you-9' } }
+    const dots = [...m.dots.filter((d) => d.team === 'you' || d.keeper), { id: 'you-9', team: 'you' as const, x, y }]
+    for (let i = 0; i < 250; i++, n++) {
+      const w = applyWobble(rng, Math.atan2(gy - y, W - x), Math.hypot(W - x, gy - y))
+      const to = shotEnd({ x, y }, w.angle, w.length)
+      goals += applyPass({ ...m, dots }, { x, y }, to, resolvePass(dots, 'you-9', { x, y }, to, 'you')).score.you
+    }
+  }
+  expect(goals / n).toBeGreaterThan(0.85)
 })
 
 it('applyWobble never exceeds 133 x 1.08', () => {

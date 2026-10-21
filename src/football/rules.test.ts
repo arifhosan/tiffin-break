@@ -46,6 +46,14 @@ describe('resolvePass', () => {
     const r = resolvePass([you('a', 500, 250)], 'a', { x: 500, y: 250 }, { x: 600, y: 250 }, 'you')
     expect(r).toMatchObject({ kind: 'out', at: { x: 800, y: 250 }, restart: { x: 790, y: 250 }, ray: { from: { x: 600, y: 250 }, to: { x: 800, y: 250 } } })
   })
+  it('a line stopping within 22 short of the mouth rolls in (I2)', () => {
+    const r = resolvePass([you('a', 680, 200)], 'a', { x: 680, y: 200 }, { x: 785, y: 200 }, 'you')
+    expect(r).toMatchObject({ kind: 'goal', scorer: 'you', at: { x: 800, y: 200 }, ray: { from: { x: 785, y: 200 }, to: { x: 800, y: 200 } } })
+  })
+  it('a keeper on the goal line stops the roll-in', () => {
+    const r = resolvePass([you('a', 680, 200), cpu('k', 795, 200)], 'a', { x: 680, y: 200 }, { x: 785, y: 200 }, 'you')
+    expect(r.kind).toBe('intercepted')
+  })
   it('zero-length tap with no own dot nearby is out', () => {
     const r = resolvePass([you('a', 5, 5)], 'a', { x: 5, y: 5 }, { x: 5, y: 5 }, 'you')
     expect(r).toMatchObject({ kind: 'out', at: { x: 5, y: 5 }, restart: { x: 10, y: 10 } })

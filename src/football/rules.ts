@@ -88,6 +88,13 @@ export function resolvePass(dots: Dot[], fromDotId: string | null, from: Point, 
   const len = Math.hypot(d.x, d.y)
   if (len === 0) return { kind: 'out', at: from, restart: clampIn(from) }
 
+  // A line that stops within CATCH_R short of a goal mouth rolls in, like a pass to a player within CATCH_R:
+  // otherwise the hand wobble leaves half the shots aimed at the goal line short, and they go out (I2).
+  const roll = exitOf(to, { x: (d.x / len) * CATCH_R, y: (d.y / len) * CATCH_R })
+  if (roll?.xEdge && inMouth(roll.at.y) && live.every((o) => o.team === team || segPointDist(to, roll.at, o).d > HIT_R)) {
+    return { kind: 'goal', scorer: (roll.at.x >= W) === (team === 'you') ? team : other(team), at: roll.at, ray: { from: to, to: roll.at } }
+  }
+
   // Empty-space ray: ignores goals; its first pitch exit is `out`.
   const rd = { x: (d.x / len) * 2000, y: (d.y / len) * 2000 }
   const rx = exitOf(to, rd)
