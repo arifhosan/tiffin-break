@@ -21,8 +21,8 @@ type View = 'cover' | 'index' | GameId
  */
 export const games: Record<GameId, GameSlot> = {
   cricket: { W: Cricket.W, H: Cricket.H, landscape: true, tall: Cricket.TALL, Game: Cricket.Cricket },
-  football: { W: Football.W, H: Football.H, landscape: true, Game: Football.Football },
-  dotbox: { W: DotBox.W, H: DotBox.H, Game: DotBox.DotBoxGame },
+  football: { W: Football.W, H: Football.H, landscape: true, tall: Football.TALL, Game: Football.Football },
+  dotbox: { W: DotBox.W, H: DotBox.H, tall: { W: DotBox.W, H: DotBox.H }, Game: DotBox.DotBoxGame },
 }
 const IDS = Object.keys(games) as GameId[]
 

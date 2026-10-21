@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { dist, toSvg, type Point, type Side } from '../geom'
 import { wobblyCircle, wobblyLine } from '../ink'
 import { Page } from '../Page'
-import { useReducedMotion } from '../motion'
+import { usePortrait, useReducedMotion } from '../motion'
 import { makeRng } from '../rng'
 import { shareOrDownload } from '../share'
 import { play } from '../sound'
@@ -15,6 +15,12 @@ import { applyPass, applyWobble, DOTS_PER_TEAM, footballWinner, newFootballMatch
 import { DBOX, DOT_R, H, MAX_LEN, MOUTH, W, resolvePass, shotEnd, validPlacement, type Dot } from './rules'
 
 export { H, W }
+/**
+ * The upright page on a portrait phone: the same pitch turned a quarter (your goal at the bottom) with a strip above
+ * for the score and one below for the prompt. Rules keep their landscape coordinates; only the drawing turns.
+ */
+export const TALL = { W: 500, H: 900 }
+const TURN = 'translate(0 850) rotate(-90)' // pitch (x, y) -> page (y, 850 - x)
 const s = strings.football
 const c = strings.cricket // shared match words: নতুন ম্যাচ, টস করো, খেলা শুরু, তুমি, সিপিইউ
 const ATMA = "'Atma', sans-serif"
@@ -142,7 +148,11 @@ export function Football(props: GameProps) {
 function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => void }) {
   const layer = useContext(ResultLayer)
   const reduce = useReducedMotion()
+  const tall = usePortrait()
+  const page = tall ? TALL : { W, H }
+  const onPage = (p: Point): Point => (tall ? { x: p.y, y: 850 - p.x } : p) // for upright text next to a pitch point
   const svg = useRef<SVGSVGElement>(null)
+  const pitch = useRef<SVGGElement>(null)
   const panel = useRef<HTMLDivElement>(null)
   const aimLine = useRef<SVGGElement>(null)
   const [rng] = useState(() => makeRng(Date.now())) // one per match; the rules stay pure
@@ -269,10 +279,8 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
     run(kickoff).catch((err) => { console.error('football failed', err); onExit() }) // a throw drops back to the index, not a frozen page
   }
 
-  const local = (e: { clientX: number; clientY: number }): Point => {
-    return toSvg(svg.current!, e.clientX, e.clientY)
-  }
-  const scale = () => { const k = svg.current!.getScreenCTM()!; return Math.hypot(k.a, k.b) } // screen px per page unit
+  const local = (e: { clientX: number; clientY: number }): Point => toSvg(pitch.current!, e.clientX, e.clientY) // pitch units, turned or not
+  const scale = () => { const k = pitch.current!.getScreenCTM()!; return Math.hypot(k.a, k.b) } // screen px per page unit
   const showAim = (sh: Shot | null) => {
     const g = aimLine.current
     if (!g) return
@@ -316,7 +324,7 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
   const cancel = () => { press.current = null; showAim(null) }
 
   const scoreLine = m && (
-    <text x={W / 2} y={32} textAnchor="middle" fontSize={24} fontFamily={ATMA} fill="var(--ink)" {...halo} data-score={`${m.score.you}-${m.score.cpu}`}>
+    <text x={page.W / 2} y={32} textAnchor="middle" fontSize={24} fontFamily={ATMA} fill="var(--ink)" {...halo} data-score={`${m.score.you}-${m.score.cpu}`}>
       {name ? <tspan fontFamily="'Patrick Hand', 'Atma', sans-serif">{name}</tspan> : <tspan>{c.you}</tspan>}
       <tspan> {bn(m.score.you)} – {bn(m.score.cpu)} </tspan>
       <tspan fill="var(--ink-black)">{c.cpu}</tspan>
@@ -324,45 +332,48 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
   )
   const trails = useMemo(() => m && <Trails trail={m.trail} seed={seed} />, [m?.trail, seed])
   const showTally = m && m.phase === 'play' && (step === 'aim' || step === 'cpu')
-  const tx = ball.x > W - 60 ? ball.x - 18 : ball.x + 18
-  const ty = ball.y < 60 ? ball.y + 30 : ball.y - 16
+  const bp = onPage(ball)
+  const tx = bp.x > page.W - 60 ? bp.x - 18 : bp.x + 18
+  const ty = bp.y < 60 ? bp.y + 30 : bp.y - 16
   const winner = m && phase === 'done' ? footballWinner(m) : null
 
   return (
     <>
-      <Page ref={svg} width={W} height={H}>
+      <Page ref={svg} width={page.W} height={page.H}>
         <title>{s.pitch}</title>
-        <line x1={W / 2} x2={W / 2} y1={0} y2={H} stroke="var(--shade)" strokeWidth={3} />
-        {m && <Pitch seed={seed} />}
-        {trails}
-        {m && <Players dots={m.dots} />}
-        {pulse && <circle key={pulse.key} className="fb-pulse" cx={pulse.at.x} cy={pulse.at.y} r={16} fill="none" stroke="var(--stamp)" strokeWidth={2.5} />}
-        {bad && <circle key={bad.key} className="fb-shake" cx={bad.at.x} cy={bad.at.y} r={DOT_R} fill="none" stroke="var(--stamp)" strokeWidth={2.2} strokeDasharray="4 3" />}
-        {m && m.phase !== 'placement' && (
-          <circle className="fb-ball" r={5.5} fill="var(--ink-black)" stroke="var(--paper)" strokeWidth={1.5}
-            style={{ transform: `translate(${ball.x}px, ${ball.y}px)` }} data-ball={`${m.ball.x.toFixed(1)},${m.ball.y.toFixed(1)}`} />
-        )}
+        {!tall && <line x1={W / 2} x2={W / 2} y1={0} y2={H} stroke="var(--shade)" strokeWidth={3} />}
+        <g ref={pitch} transform={tall ? TURN : undefined}>
+          {m && <Pitch seed={seed} />}
+          {trails}
+          {m && <Players dots={m.dots} />}
+          {pulse && <circle key={pulse.key} className="fb-pulse" cx={pulse.at.x} cy={pulse.at.y} r={16} fill="none" stroke="var(--stamp)" strokeWidth={2.5} />}
+          {bad && <circle key={bad.key} className="fb-shake" cx={bad.at.x} cy={bad.at.y} r={DOT_R} fill="none" stroke="var(--stamp)" strokeWidth={2.2} strokeDasharray="4 3" />}
+          {m && m.phase !== 'placement' && (
+            <circle className="fb-ball" r={5.5} fill="var(--ink-black)" stroke="var(--paper)" strokeWidth={1.5}
+              style={{ transform: `translate(${ball.x}px, ${ball.y}px)` }} data-ball={`${m.ball.x.toFixed(1)},${m.ball.y.toFixed(1)}`} />
+          )}
+          <g ref={aimLine} style={{ visibility: 'hidden' }} aria-hidden="true">
+            <line stroke="var(--ink)" strokeWidth={1.5} strokeDasharray="6 6" opacity={0.55} strokeLinecap="round" />
+          </g>
+        </g>
         {showTally && (
           <text x={tx} y={ty} textAnchor="middle" fontSize={17} fontFamily={ATMA} fill={inkOf(m.possession)} {...halo} strokeWidth={4} aria-hidden="true">
             {tally(m.lines)}
           </text>
         )}
-        <g ref={aimLine} style={{ visibility: 'hidden' }} aria-hidden="true">
-          <line stroke="var(--ink)" strokeWidth={1.5} strokeDasharray="6 6" opacity={0.55} strokeLinecap="round" />
-        </g>
         {scoreLine}
         {shout && (
-          <text className="ck-shout" x={W / 2} y={H / 2 + 18} textAnchor="middle" fontSize={shout === strings.shout.goal ? 84 : 52}
+          <text className="ck-shout" x={page.W / 2} y={page.H / 2 + 18} textAnchor="middle" fontSize={shout === strings.shout.goal ? 84 : 52}
             fontFamily={GALADA} fill={shout === strings.shout.goal ? 'var(--stamp)' : 'var(--ink)'} {...halo} strokeWidth={10} aria-hidden="true">
             {shout}
           </text>
         )}
         {phase === 'play' && prompt && step !== 'shout' && step !== 'pass' && (
-          <text x={W / 2} y={H - 16} textAnchor="middle" fontSize={20} fontFamily={ATMA} fill={step === 'place' && bad ? 'var(--stamp)' : 'var(--ink)'}
+          <text x={page.W / 2} y={page.H - 16} textAnchor="middle" fontSize={20} fontFamily={ATMA} fill={step === 'place' && bad ? 'var(--stamp)' : 'var(--ink)'}
             {...halo} aria-hidden="true">{prompt}</text>
         )}
         {(step === 'place' || step === 'aim') && (
-          <rect className="fb-input" width={W} height={H} fill="transparent"
+          <rect className="fb-input" width={page.W} height={page.H} fill="transparent"
             onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={cancel} />
         )}
       </Page>

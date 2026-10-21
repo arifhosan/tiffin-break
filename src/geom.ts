@@ -19,7 +19,7 @@ export function rotate(p: Point, angle: number): Point {
 }
 
 // Client (screen) pixels -> the SVG's own user units. The one place to patch if a browser mis-maps a rotated spread.
-export function toSvg(svg: SVGSVGElement, clientX: number, clientY: number): Point {
+export function toSvg(svg: SVGGraphicsElement, clientX: number, clientY: number): Point {
   const p = new DOMPoint(clientX, clientY).matrixTransform(svg.getScreenCTM()!.inverse())
   return { x: p.x, y: p.y }
 }
