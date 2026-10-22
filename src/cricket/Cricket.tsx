@@ -55,13 +55,14 @@ function resultLine(m: CricketMatch) {
 
 export function Cricket(props: GameProps) {
   const [round, setRound] = useState(0)
-  return <Match key={round} {...props} onAgain={() => setRound((r) => r + 1)} />
+  const [overs, setOvers] = useState<Overs>(1) // survives Play again
+  return <Match key={round} {...props} overs={overs} setOvers={setOvers} onAgain={() => setRound((r) => r + 1)} />
 }
 
 // Rejection reason for a match whose page was left; the only error `start` ignores.
 const GONE = new Error('page left')
 
-function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => void }) {
+function Match({ name, onBest, onExit, onAgain, onPlaying, overs, setOvers }: GameProps & { onAgain: () => void; overs: Overs; setOvers: (o: Overs) => void }) {
   const layer = useContext(ResultLayer)
   const reduce = useReducedMotion()
   const tall = usePortrait()
@@ -81,7 +82,7 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
   const trail = useRef<{ p: Point; t: number }[]>([])
 
   const [phase, setPhase] = useState<Phase>('setup')
-  const [overs, setOvers] = useState<Overs>(1)
+  useEffect(() => onPlaying?.(phase === 'play'), [phase]) // onPlaying is a new arrow each render: keep it out of the deps
   const [m, setM] = useState<CricketMatch | null>(null)
   const [seed, setSeed] = useState(0)
   const [shownAngle, setShownAngle] = useState(0)

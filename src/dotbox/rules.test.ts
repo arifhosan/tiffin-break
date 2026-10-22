@@ -46,6 +46,11 @@ describe('dotbox rules', () => {
     expect(edgeNear(g, { x: 0.5, y: 0.05 })).toEqual(h(0, 0))
     expect(edgeNear(g, { x: 5, y: 5 })).toBeNull()
     expect(edgeNear(playEdge(g, h(0, 0)), { x: 0.5, y: 0.05 })).toBeNull() // only taken edge within 0.5
-    expect(edgeNear(playEdge(g, h(0, 0)), { x: 0.2, y: 0.1 })).toEqual(v(0, 0)) // taken h(0,0) skipped, free v(0,0) within 0.5
+    expect(edgeNear(playEdge(g, h(0, 0)), { x: 0.2, y: 0.1 })).toEqual(v(0, 0)) // taken h(0,0) skipped, free v(0,0) nearest
+    expect(edgeNear(g, { x: 0.5, y: 0.5 })).toBeNull() // dead centre of a box: no side is nearer
+    expect(edgeNear(g, { x: 0.3, y: 0.3 })).toBeNull() // corner of a box: top and left tie
+    expect(edgeNear(g, { x: 0.5, y: 0.6 })).toBeNull() // past PICK from every edge
+    expect(edgeNear(g, { x: 0.5, y: 0.25 })).toEqual(h(0, 0))
+    expect(edgeNear(g, { x: 1.05, y: 0.3 })).toEqual(v(0, 1)) // a drag's end point near the line still counts
   })
 })

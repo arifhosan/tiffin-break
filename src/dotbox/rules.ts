@@ -63,15 +63,14 @@ export function playEdge(g: DotBox, e: Edge): DotBox {
   return n
 }
 
+const PICK = 0.35 // a tap counts within this many boxes of a free edge...
+const CLEAR = 0.1 // ...and only if that edge is clearly nearer than the next one (a box centre or a dot is ambiguous)
+
+/** The free edge a tap at p (in box units) clearly points at, by distance to the segment, else null. */
 export function edgeNear(g: DotBox, p: Point): Edge | null {
-  let best: Edge | null = null
-  let bd = 0.5
-  for (const e of legalEdges(g)) {
-    const d = Math.hypot(p.x - (e.o === 'h' ? e.c + 0.5 : e.c), p.y - (e.o === 'h' ? e.r : e.r + 0.5))
-    if (d <= bd && (best === null || d < bd)) {
-      best = e
-      bd = d
-    }
-  }
-  return best
+  const off = (a: number) => Math.max(0, Math.abs(a - 0.5) - 0.5) // distance past a segment's ends, along it
+  const [a, b] = legalEdges(g)
+    .map((e) => ({ e, d: e.o === 'h' ? Math.hypot(off(p.x - e.c), p.y - e.r) : Math.hypot(p.x - e.c, off(p.y - e.r)) }))
+    .sort((x, y) => x.d - y.d)
+  return a && a.d <= PICK && (!b || b.d - a.d >= CLEAR) ? a.e : null
 }

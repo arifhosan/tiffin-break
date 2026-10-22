@@ -68,10 +68,13 @@ function InningsBlock({ inn, i, y, gap, name, tgt, keep, first }:
 /**
  * The left page: a handwritten ball-by-ball ledger. Baselines sit on the 18-unit rules.
  * `tall`: the upright phone page, the header on top and the innings under the field, with only the last two rows each.
+ * The spread keeps the latest rows that fit its half page, so extras never push one innings into the next.
  */
 export function Scorecard({ m, overs, name, result, tall }: { m: CricketMatch | null; overs: number; name: string; result: string; tall: boolean }) {
   const gap = tall || overs === 5 ? 18 : 36
-  const block = tall ? 90 : 54 + gap * (overs + 1)
+  const block = tall ? 90 : 180 // the spread: two innings of ten ruled lines between the header and the result
+  const first = gap === 18 ? 2 : 1 // rows start under the target line
+  const keep = tall ? 2 : block / gap - first // an over heavy with extras wraps: keep the latest rows that fit
   const y0 = tall ? 558 : 140
   return (
     <g>
@@ -81,7 +84,7 @@ export function Scorecard({ m, overs, name, result, tall }: { m: CricketMatch | 
       </text>
       {m?.innings.map((inn, i) => (
         <InningsBlock key={i} inn={inn} i={i} y={y0 + i * block} gap={gap} name={name} tgt={i === 1 ? m.innings[0].runs + 1 : null}
-          keep={tall ? 2 : Infinity} first={tall ? 2 : 1} />
+          keep={keep} first={first} />
       ))}
       {result && (
         <text x={X0} y={tall ? 738 : 518} fontSize={26} fontFamily="'Galada', 'Atma', sans-serif" fill="var(--stamp)">{result}</text>

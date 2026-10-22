@@ -84,7 +84,7 @@ export function DotBoxGame(props: GameProps) {
 
 type Size = { rows: number; cols: number }
 
-function Match({ name, onBest, onExit, onAgain, size, setSize }: GameProps & { onAgain: () => void; size: Size; setSize: (z: Size) => void }) {
+function Match({ name, onBest, onExit, onAgain, onPlaying, size, setSize }: GameProps & { onAgain: () => void; size: Size; setSize: (z: Size) => void }) {
   const layer = useContext(ResultLayer)
   const svg = useRef<SVGSVGElement>(null)
   const panel = useRef<HTMLDivElement>(null)
@@ -96,6 +96,7 @@ function Match({ name, onBest, onExit, onAgain, size, setSize }: GameProps & { o
   const mine = initialOf(name)
 
   const [phase, setPhase] = useState<Phase>('setup')
+  useEffect(() => onPlaying?.(phase === 'play'), [phase]) // onPlaying is a new arrow each render: keep it out of the deps
   const [g, setG] = useState<DotBox | null>(null)
   const [seed, setSeed] = useState(0)
   const [step, setStep] = useState<Step>('move')
@@ -172,8 +173,8 @@ function Match({ name, onBest, onExit, onAgain, size, setSize }: GameProps & { o
   }
   const geo = useMemo(() => geoOf(size.rows, size.cols), [size.rows, size.cols])
   const turnText = step === 'cpu' ? s.cpuTurn : s.yourTurn
-  const winner = phase === 'done' ? (crashed ? 'tie' : g ? dotBoxWinner(g) : null) : null
-  const status = winner ? s.won[winner] : phase === 'play' ? turnText : ''
+  const winner = phase === 'done' && !crashed && g ? dotBoxWinner(g) : null
+  const status = crashed ? s.crashed : winner ? s.won[winner] : phase === 'play' ? turnText : ''
 
   const stepper = (key: 'rows' | 'cols') => (
     <div className="db-step" role="group" aria-label={s[key]}>
@@ -235,6 +236,19 @@ function Match({ name, onBest, onExit, onAgain, size, setSize }: GameProps & { o
                 <button type="button" className="btn primary" onClick={() => start(phase === 'toss' ? 'you' : 'cpu')}>{c.start}</button>
               </>
             )}
+          </div>
+        </div>,
+        layer,
+      )}
+
+      {layer && crashed && createPortal(
+        <div className="ck-setup">
+          <div ref={panel} className="ck-panel" role="alert">
+            <p>{s.crashed}</p>
+            <div className="ck-choices">
+              <button type="button" className="btn primary" onClick={onAgain}>{strings.buttons.again}</button>
+              <button type="button" className="btn" onClick={onExit}>{strings.buttons.toIndex}</button>
+            </div>
           </div>
         </div>,
         layer,
