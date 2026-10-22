@@ -75,6 +75,4 @@ The full, prioritised list of open points, feedback and improvements is in **`do
 - Game input and the focus ring are only verified in Chrome. Safari/Firefox checks need the user's OK to download Playwright WebKit/Firefox.
 - Small known issues:
   - Cricket and Dot Box have no keyboard play.
-  - Leaving a game mid-match doesn't ask for confirmation.
-  - A bench item can be dragged half off the edge.
 - The Chor-Police chit game and Pen Fight are deferred (see spec §2).

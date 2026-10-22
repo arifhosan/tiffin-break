@@ -8,27 +8,17 @@ Collected on 2026-10-21 from the per-task reviews, the final whole-branch review
 - **P2** Add an `og:image` (a nice notebook-page PNG) so Facebook and Messenger link previews look good.
 
 ## Gameplay and balance
-- **P2 Football balance (v2.3, sim only):** the CPU now scores in about 36% of its possessions; human wins 65% placing forwards, 55% copying the CPU formations; median first-to-3 is 66 s. Confirm by hand on a phone. From a corner, a full-length pull still only fits for about half the into-pitch directions on a 360 px phone.
+- **P2 Football balance (v2.3, sim only):** with the CPU aiming error (σ 0.2 rad) a realistic human wins about 49% of first-to-3 (careful 56%, sloppy 38%); the CPU scores on about 10% of its possessions. Confirm by hand on a phone. From a corner, a full-length pull still only fits for about half the into-pitch directions on a 360 px phone.
 - **P2 Cricket LBW:** 16% of all drops appeal; 33% in the inner ring vs 11% in the outer (200k-drop sim). Consider a larger inner radius or fewer inner cells.
 - **P3 Cricket on landscape phones:** the field takes half the spread, labels about 8 px (portrait is fine at 10+ px).
 - **P2 Cricket balance:** the CPU batsman is pure luck (a random point). After people have played, tune it against real human scores so the game stays winnable but not trivial. The cell-count table in `field.ts` is the main lever.
 - **P3 Dot Box:** the AI is decent but not chain-aware (no double-dealing); it beat a greedy human 19/20. A harder mode could come later.
 
 ## UX polish
-- **P2** Leaving a game mid-match (← সূচিপত্র) doesn't ask for confirmation, so progress is lost.
 - **P2 Keyboard play:** cricket (flick and lids) and Dot Box have no keyboard input at all, against the CLAUDE.md rule on interactive items.
-- **P2 Bench:** an item can be dragged half off the edge, because only its centre is clamped. Clamp by its bounding box.
-- **P2 Bench:** ink drawn over a book sits on the wood underneath, so it stays hidden until the book is moved. Maybe draw ink on top, or show a hint.
-- **P3 Name editing:** there's no cancel, and Esc closes the whole notebook.
-- **P3** The settings dialog doesn't close when you click the backdrop.
-- **P3 Dot Box:** a tap in the dead centre of a box picks one of its sides arbitrarily (the pick radius covers the whole box). On a 10x10 phone grid boxes are about 27 px.
-- **P3 Dot Box:** the result never says who won on screen (screen-reader only), and the stamp covers the board.
-- **P3 Cricket:** Play again resets the overs to 1.
-- **P3 Bench:** there's no multi-touch `pointerId` filter, so a second finger can hijack a drag.
-- **P3** A focused and "lifted" bench item loses its lift shadow, because the focus filter overrides it.
-- **P3 Cricket scorecard (desktop spread):** with 4+ extras in an over, wrapped rows hit the 2nd-innings header, and at 5 overs the innings blocks overlap. The portrait page shows the last two rows per innings and is fine.
-- **P3 Dot Box:** the crash fallback shows a "tie" result. Show an honest error message instead.
-- **P3 Football:** the error fallback returns to the index rather than to a Result screen.
+
+- **P3 Bench:** in touch emulation, the first tap on an item right after dragging one fires no click (also before the 2026-10-22 fixes). Check on a real phone.
+- **P3 Settings:** the reset still uses `confirm()`.
 
 ## Engineering
 - **P2** Commit the end-to-end checks. The Playwright scripts that played every screen live in the gitignored `.superpowers/` folder, with hard-coded local paths. Move them to `e2e/` with relative paths, so flow, focus and pointer behaviour have a committed regression check. They run on the ux-ui plugin's Playwright, so package.json gains no dependency. Once they're committed, the test-only `data-*` attributes in the DOM earn their place.
@@ -46,7 +36,6 @@ Collected on 2026-10-21 from the per-task reviews, the final whole-branch review
   - `bn(NaN)` returns Latin text
   - `newDotBox` accepts non-integer sizes
   - `clamp` passes NaN through
-  - `load()` doesn't cap strokes at 300 (`addStroke` does)
 - **P3** `src/sound.ts`'s `catch {}` hides real bugs in the sound recipes along with "no Web Audio".
 - **P3** Decide on a licence for the project's own code. The repo has none, which means "all rights reserved".
 

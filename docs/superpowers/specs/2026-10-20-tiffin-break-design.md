@@ -175,7 +175,7 @@ A browser game that recreates the pen-and-paper games Bangladeshi students playe
 ### One pass [call]
 - **Your eyes stay open** while passing (the md's blind flick was not adopted).
 - Drag back from the ball like a slingshot. The direction is opposite to the drag, and a drag of 0–120 px gives a line **20–133** units long. **The longest line is ⅓ of the centre-to-goal distance (400 / 3 ≈ 133)**, so no possession can reach a goal from the centre in fewer than 3 lines [user, v2.2].
-- Hand wobble is applied: angle + Gaussian(σ = 0.07 rad), and length × (1 + Gaussian(σ = 0.08)). The CPU gets the same wobble.
+- Hand wobble is applied: angle + Gaussian(σ = 0.07 rad), and length × (1 + Gaussian(σ = 0.08)). The CPU gets the same wobble, plus an extra aiming error on the angle (σ = 0.2 rad) [call, v2.3].
 
 ### Resolving a pass
 Walk the segment from start to end. The **earliest** of these events wins:
@@ -206,7 +206,7 @@ If none of those happen, look at the end point:
   - complete = 100 + progress toward the goal
   - intercepted or out = −200 + 0.1 × the distance from the CPU's own goal (lose it upfield, not at home) [call, v2.3]
 
-  Pick the best, breaking ties with the RNG, then apply wobble.
+  Pick the best, breaking ties with the RNG, then apply the CPU aiming error and the wobble.
   - On its 5th line, the CPU scores only goals and the chance of losing the ball near its own goal, because a completed pass is worthless on the last line [call].
 - **Result:** the page keeps every ink line. The score is written at the top of the spread (e.g. "তুমি ৩ – ১ সিপিইউ").
 
