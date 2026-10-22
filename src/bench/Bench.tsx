@@ -74,7 +74,7 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
   const liveEl = useRef<SVGPathElement>(null) // the stroke being drawn: set directly, no React re-render
   const [wiggle, setWiggle] = useState(0)
   const [settings, setSettings] = useState(false)
-  const g = useRef<{ id?: ItemId; sx: number; sy: number; dx: number; dy: number; moved: boolean; pts?: P[] } | null>(null)
+  const g = useRef<{ pid: number; id?: ItemId; sx: number; sy: number; dx: number; dy: number; moved: boolean; pts?: P[] } | null>(null)
   const tapped = useRef<ItemId | null>(null) // a tap acts on click, after the touch's ghost click, so it can't land on the cover
 
   const toBench = (e: { clientX: number; clientY: number }): P => {
@@ -94,13 +94,14 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
   }
 
   const down = (e: PointerEvent<SVGSVGElement>) => {
+    if (g.current) return // a second finger never takes over the gesture
     tapped.current = null
     if (e.button !== 0) return
     const id = (e.target as Element).closest<SVGGElement>('[data-item]')?.dataset.item as ItemId | undefined
     if (!id && mode === 'move') return
     e.currentTarget.setPointerCapture(e.pointerId)
     const [x, y] = toBench(e)
-    const at = { sx: e.clientX, sy: e.clientY, dx: 0, dy: 0, moved: false }
+    const at = { pid: e.pointerId, sx: e.clientX, sy: e.clientY, dx: 0, dy: 0, moved: false }
     if (id) {
       g.current = { ...at, id, dx: saved.items[id].x - x, dy: saved.items[id].y - y }
     } else if (mode === 'draw') {
@@ -114,7 +115,7 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
 
   const move = (e: PointerEvent<SVGSVGElement>) => {
     const c = g.current
-    if (!c) return
+    if (!c || e.pointerId !== c.pid) return
     if (c.id && !c.moved && Math.hypot(e.clientX - c.sx, e.clientY - c.sy) < TAP_PX) return
     // raise on drag, not on press: moving the node under a press makes Chrome drop the click a tap waits for
     if (c.id && !c.moved) { const id = c.id; setOrder((o) => [...o.filter((k) => k !== id), id]) }
@@ -125,11 +126,12 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
     else setSaved((s) => eraseAt(s, { x, y }, ERASE_R))
   }
 
-  const up = (cancel: boolean) => {
+  const up = (e: PointerEvent, cancel: boolean) => {
     const c = g.current
+    if (!c || e.pointerId !== c.pid) return
     g.current = null
     liveEl.current?.setAttribute('d', '')
-    if (!c || cancel) return
+    if (cancel) return
     if (c.id) c.moved ? play('thud', panOf(c.id)) : (tapped.current = c.id)
     else if (c.pts) { const pts = c.pts; setSaved((s) => addStroke(s, pts, `s${Date.now()}`)) }
   }
@@ -156,14 +158,10 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
         <p className="hint" aria-live="polite">{hint}</p>
       </header>
       <svg ref={svg} className="bench" data-mode={mode} viewBox={`0 0 ${BENCH_W} ${BENCH_H}`} role="group" aria-label={strings.bench.board}
-        onPointerDown={down} onPointerMove={move} onPointerUp={() => up(false)} onPointerCancel={() => up(true)}
+        onPointerDown={down} onPointerMove={move} onPointerUp={(e) => up(e, false)} onPointerCancel={(e) => up(e, true)} onLostPointerCapture={(e) => up(e, true)}
         onClick={() => { const id = tapped.current; tapped.current = null; if (id) tap(id) }}>
         <defs><ItemDefs /></defs>
         <Board />
-        <g className="strokes" fill="none" stroke="var(--ink)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <Strokes strokes={saved.strokes} />
-          <path ref={liveEl} />
-        </g>
         {order.map((id) => {
           const it = saved.items[id]
           const tool = id === 'pen' || id === 'eraser'
@@ -177,6 +175,10 @@ export function Bench({ saved, setSaved, onOpenNotebook }: Props) {
             </g>
           )
         })}
+        <g className="strokes" fill="none" stroke="var(--ink)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <Strokes strokes={saved.strokes} />
+          <path ref={liveEl} />
+        </g>
       </svg>
       {settings && <Settings saved={saved} setSaved={setSaved} onClose={() => setSettings(false)} />}
     </main>

@@ -1,20 +1,34 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_SAVED, load } from '../storage'
-import { addStroke, eraseAt, moveItem, resetBench, simplify } from './model'
+import { addStroke, eraseAt, moveItem, normalizeItems, resetBench, simplify } from './model'
 
 afterEach(() => vi.unstubAllGlobals())
 const stub = (json: unknown) => vi.stubGlobal('localStorage', { getItem: () => JSON.stringify(json) })
 
 describe('bench model', () => {
-  it('moveItem clamps and does not mutate', () => {
+  it('moveItem keeps the whole item on the bench and does not mutate', () => {
     const before = structuredClone(DEFAULT_SAVED)
-    const s = moveItem(DEFAULT_SAVED, 'pen', 900, -20)
-    expect(s.items.pen).toMatchObject({ x: 600, y: 0 })
+    const s = moveItem(DEFAULT_SAVED, 'tiffin', 900, -20) // tiffin: 74 x 64 half size, rot 0
+    expect(s.items.tiffin).toMatchObject({ x: 526, y: 64 })
     expect(DEFAULT_SAVED).toEqual(before)
+  })
+  it('moveItem clamps by the rotated box', () => {
+    const s = moveItem({ ...DEFAULT_SAVED, items: { ...DEFAULT_SAVED.items, pen: { x: 0, y: 0, rot: 90 } } }, 'pen', 0, 0)
+    expect(s.items.pen.x).toBeCloseTo(88) // turned on its side: the pen's length runs along x
+    expect(s.items.pen.y).toBeCloseTo(18)
+  })
+  it('the default desk already fits', () => {
+    expect(normalizeItems(DEFAULT_SAVED)).toEqual(DEFAULT_SAVED)
   })
   it('load clamps out-of-range items', () => {
     stub({ v: 1, items: { tiffin: { x: 5000, y: 5000, rot: 0 } } })
-    expect(load().items.tiffin).toMatchObject({ x: 600, y: 800 })
+    expect(load().items.tiffin).toMatchObject({ x: 526, y: 736 })
+  })
+  it('load keeps only the newest 300 strokes', () => {
+    stub({ v: 1, strokes: Array.from({ length: 302 }, (_, i) => ({ id: `s${i}`, pts: [[0, 0], [1, 1]] })) })
+    const { strokes } = load()
+    expect(strokes).toHaveLength(300)
+    expect(strokes[0].id).toBe('s2')
   })
   it('load returns fresh copies, never DEFAULT_SAVED', () => {
     vi.stubGlobal('localStorage', { getItem: () => '{oops' })

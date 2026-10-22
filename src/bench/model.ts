@@ -5,15 +5,31 @@ export const BENCH_W = 600
 export const BENCH_H = 800
 export const MAX_STROKES = 300
 
-const clamp = (v: number, hi: number) => Math.max(0, Math.min(hi, v))
+// Half width and height of each item's art (bench/items.tsx, hit areas included), before its rotation.
+const HALF: Record<ItemId, [number, number]> = {
+  notebook: [109, 142], bookBangla: [79, 106], bookMath: [79, 106], bookEnglish: [79, 106],
+  pen: [18, 88], pencil: [18, 90], eraser: [40, 28], geometry: [95, 52], tiffin: [74, 64],
+}
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+
+/** Keeps the item's whole rotated bounding box on the bench, not just its centre. */
+function fit(id: ItemId, it: Saved['items'][ItemId], x: number, y: number) {
+  const [w, h] = HALF[id]
+  const a = (it.rot * Math.PI) / 180
+  const c = Math.abs(Math.cos(a))
+  const sn = Math.abs(Math.sin(a))
+  const hw = w * c + h * sn
+  const hh = w * sn + h * c
+  return { ...it, x: clamp(x, hw, BENCH_W - hw), y: clamp(y, hh, BENCH_H - hh) }
+}
 
 export function moveItem(s: Saved, id: ItemId, x: number, y: number): Saved {
-  return { ...s, items: { ...s.items, [id]: { ...s.items[id], x: clamp(x, BENCH_W), y: clamp(y, BENCH_H) } } }
+  return { ...s, items: { ...s.items, [id]: fit(id, s.items[id], x, y) } }
 }
 
 export function normalizeItems(s: Saved): Saved {
   const items = { ...s.items }
-  for (const k of Object.keys(items) as ItemId[]) items[k] = { ...items[k], x: clamp(items[k].x, BENCH_W), y: clamp(items[k].y, BENCH_H) }
+  for (const k of Object.keys(items) as ItemId[]) items[k] = fit(k, items[k], items[k].x, items[k].y)
   return { ...s, items }
 }
 

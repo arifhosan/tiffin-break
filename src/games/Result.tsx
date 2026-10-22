@@ -30,7 +30,7 @@ export function Result({ svgRef, title, outcome, onShare, onAgain, onIndex }: Pr
 
   useEffect(() => {
     if (outcome !== 'tie') play(outcome === 'win' ? 'cheer' : 'groan')
-    setSaid(title)
+    setSaid(`${title} ${strings.result[outcome]}`)
     first.current?.focus()
   }, [outcome, title])
 
@@ -53,6 +53,7 @@ export function Result({ svgRef, title, outcome, onShare, onAgain, onIndex }: Pr
   const ui = (
     <div className="result" role="group" aria-labelledby="result-title">
       <p id="result-title" className="stamp" aria-hidden="true">{title}</p>
+      <p className="verdict" aria-hidden="true">{strings.result[outcome]}</p>
       <p className="sr-only" role="status">{said}</p>
       <div className="result-actions">
         <button ref={first} type="button" className="btn primary" onClick={share} aria-disabled={busy} aria-busy={busy}>{strings.buttons.share}</button>

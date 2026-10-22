@@ -1,4 +1,4 @@
-import { normalizeItems } from './bench/model'
+import { MAX_STROKES, normalizeItems } from './bench/model'
 
 export type ItemId = 'notebook' | 'bookBangla' | 'bookMath' | 'bookEnglish' | 'pen' | 'pencil' | 'eraser' | 'geometry' | 'tiffin'
 export type Stroke = { id: string; pts: [number, number][] }
@@ -55,7 +55,7 @@ export function load(): Saved {
     return normalizeItems({
       v: 1,
       items,
-      strokes: Array.isArray(raw.strokes) ? raw.strokes.filter(isStroke) : [],
+      strokes: Array.isArray(raw.strokes) ? raw.strokes.filter(isStroke).slice(-MAX_STROKES) : [],
       name: typeof raw.name === 'string' ? raw.name : DEFAULT_SAVED.name,
       muted: typeof raw.muted === 'boolean' ? raw.muted : DEFAULT_SAVED.muted,
       best,

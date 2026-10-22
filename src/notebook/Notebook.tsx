@@ -5,6 +5,7 @@ import { usePortrait, useReducedMotion } from '../motion'
 import { play } from '../sound'
 import { Notebook as Khata } from '../bench/items'
 import { ResultLayer } from '../games/Result'
+import { closeOnBackdrop } from '../Settings'
 import * as Cricket from '../cricket/Cricket'
 import * as Football from '../football/Football'
 import * as DotBox from '../dotbox/DotBoxGame'
@@ -44,6 +45,8 @@ export function Notebook({ saved, setSaved, onClose }: Props) {
   const openBtn = useRef<HTMLButtonElement>(null)
   const returnTo = useRef<GameId | null>(null)
   const leaving = useRef(false)
+  const playing = useRef(false) // the game says a match is under way
+  const ask = useRef<HTMLDialogElement>(null)
   const timer = useRef(0)
   const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const reduce = useReducedMotion()
@@ -79,6 +82,7 @@ export function Notebook({ saved, setSaved, onClose }: Props) {
   useEffect(() => () => clearTimeout(timer.current), [])
 
   const openGame = (id: GameId) => {
+    playing.current = false
     play('rustle')
     setView(id)
   }
@@ -101,6 +105,12 @@ export function Notebook({ saved, setSaved, onClose }: Props) {
     timer.current = window.setTimeout(done, ZOOM_MS)
   }
 
+  const back = () => {
+    if (!playing.current) return leave()
+    ask.current?.showModal()
+    ask.current?.querySelector<HTMLElement>('.primary')?.focus() // stay is the safe default
+  }
+
   const saveName = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const name = String(new FormData(e.currentTarget).get('name') ?? '').trim()
@@ -117,7 +127,12 @@ export function Notebook({ saved, setSaved, onClose }: Props) {
 
   return (
     <dialog ref={dlg} className="nb" aria-label={strings.bench.notebook} data-game={game ?? undefined}
-      onCancel={(e) => { if (game) { e.preventDefault(); leave() } }} onClose={onClose}>
+      onCancel={(e) => {
+        if (e.target !== e.currentTarget) return // React passes the leave dialog's own cancel and close up to here
+        if (game) { e.preventDefault(); back() }
+        else if (view === 'cover' && editing) { e.preventDefault(); setEditing(false); openBtn.current?.focus() } // Esc drops the edit, not the notebook
+      }}
+      onClose={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="nb-col" inert={!!game}>
         {view === 'cover' ? (
           <>
@@ -158,16 +173,24 @@ export function Notebook({ saved, setSaved, onClose }: Props) {
       </div>
       {game && Game && (
         <>
-          <button type="button" className="btn on-dark back" onClick={leave} autoFocus>{strings.back}</button>
+          <button type="button" className="btn on-dark back" onClick={back} autoFocus>{strings.back}</button>
           <div className="stage" data-landscape={(games[game].landscape && !tall) || undefined} data-tall={tall || undefined}
             style={{ '--ar': size!.W / size!.H } as CSSProperties}>
             <div ref={zoom} className="zoom">
               <ResultLayer.Provider value={layer}>
-                {layer && <Game name={saved.name} onBest={(v) => setSaved((s) => recordBest(s, game, v))} onExit={leave} />}
+                {layer && <Game name={saved.name} onBest={(v) => setSaved((s) => recordBest(s, game, v))} onExit={leave}
+                  onPlaying={(on) => { playing.current = on }} />}
               </ResultLayer.Provider>
             </div>
             <div ref={setLayer} className="zoom-layer" />
           </div>
+          <dialog ref={ask} className="sheet" aria-labelledby="nb-leave" onClick={closeOnBackdrop}>
+            <h2 id="nb-leave">{strings.leave.ask}</h2>
+            <div className="result-actions">
+              <button type="button" className="btn" onClick={() => { ask.current?.close(); leave() }}>{strings.leave.go}</button>
+              <button type="button" className="btn primary" onClick={() => ask.current?.close()}>{strings.leave.stay}</button>
+            </div>
+          </dialog>
         </>
       )}
     </dialog>

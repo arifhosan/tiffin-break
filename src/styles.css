@@ -57,6 +57,7 @@
   --steel-lo: #848d97;
   --shadow-rest: drop-shadow(1.5px 3px 2px rgba(25, 12, 4, 0.45));
   --shadow-lifted: drop-shadow(6px 12px 7px rgba(25, 12, 4, 0.5));
+  --ring-wood: drop-shadow(0 0 2px var(--focus-on-wood)) drop-shadow(0 0 2px var(--focus-on-wood)) drop-shadow(0 0 1px var(--focus-on-wood));
 
   --t-quick: 140ms;
   --t-wiggle: 520ms;
@@ -103,7 +104,9 @@ body {
 .item .art { filter: var(--shadow-rest); transition: transform var(--t-quick) ease-out, filter var(--t-quick) ease-out; }
 .item.lifted .art { transform: scale(1.2); filter: var(--shadow-lifted); }
 .item.lifted .cap { display: none; } /* the pen is uncapped while drawing */
-.item:focus-visible .art { filter: drop-shadow(0 0 2px var(--focus-on-wood)) drop-shadow(0 0 2px var(--focus-on-wood)) drop-shadow(0 0 1px var(--focus-on-wood)); } /* SVG <g> outlines don't paint in Safari/Firefox */
+.item:focus-visible .art { filter: var(--ring-wood) var(--shadow-rest); } /* SVG <g> outlines don't paint in Safari/Firefox */
+.item.lifted:focus-visible .art { filter: var(--ring-wood) var(--shadow-lifted); }
+.strokes { pointer-events: none; } /* ink sits on top of the items but never blocks a tap on them */
 .art { transform-box: fill-box; transform-origin: center; }
 .wiggle { animation: wiggle var(--t-wiggle) ease-in-out; }
 @keyframes wiggle {
@@ -312,8 +315,18 @@ body {
   border-radius: 0.12em;
   background: var(--paper-veil);
   color: var(--stamp);
-  font: min(13cqw, 20cqh, 6rem)/1.25 'Galada', 'Atma', sans-serif;
+  font: min(12cqw, 16cqh, 5rem)/1.25 'Galada', 'Atma', sans-serif;
   rotate: -7deg;
+}
+/* who won, tucked under the stamp: a slip of paper, not a second stamp */
+.verdict {
+  margin: max(-6cqh, -28px) 0 0;
+  padding: 0 0.5em;
+  border-radius: 4px;
+  background: var(--paper-veil);
+  color: var(--stamp);
+  font-size: clamp(1rem, 7cqh, 1.6rem);
+  rotate: -3deg;
 }
 .result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .result-msg { margin: 0; min-height: 1.4em; padding: 0 0.4em; border-radius: 4px; background: var(--paper-veil); color: var(--ink); text-align: center; }

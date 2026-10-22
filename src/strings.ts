@@ -6,6 +6,8 @@ export const bn = (n: number): string => String(n).replace(/\d/g, (d) => D[+d])
 export const strings = {
   appName: 'টিফিন ব্রেক',
   back: '← সূচিপত্র',
+  leave: { ask: 'ম্যাচ ছেড়ে যাবে?', go: 'যাও', stay: 'থাকো' },
+  result: { win: 'তুমি জিতেছ', loss: 'সিপিইউ জিতেছে', tie: 'ড্র' },
   bench: {
     notebook: 'খাতা',
     bookBangla: 'বাংলা বই',
@@ -110,6 +112,7 @@ export const strings = {
     fiveDone: 'পাঁচ পাস শেষ',
     pass: 'পাস!',
     won: { you: 'তুমি জিতেছ', cpu: 'সিপিইউ জিতেছে' },
+    crashed: 'কিছু একটা গোলমাল হয়েছে, খেলাটা আর চলছে না।',
   },
   dotbox: {
     board: 'ডট বক্সের খাতা',
@@ -125,6 +128,7 @@ export const strings = {
     gotYou: 'ঘর পেলে!',
     gotCpu: 'সিপিইউ ঘর নিল',
     won: { you: 'তুমি জিতেছ', cpu: 'সিপিইউ জিতেছে', tie: 'ড্র!' },
+    crashed: 'কিছু একটা গোলমাল হয়েছে, খেলাটা আর চলছে না।',
   },
   share: { saved: 'ছবিটা ডাউনলোড হয়েছে', failed: 'ছবি বানানো গেল না, আবার চেষ্টা করো' },
   buttons: { toBench: 'বেঞ্চে ফেরো', share: 'শেয়ার', again: 'আবার খেলো', toIndex: 'সূচিপত্রে ফেরো', close: 'বন্ধ করো' },
