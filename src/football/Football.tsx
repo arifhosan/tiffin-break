@@ -57,6 +57,7 @@ export const tally = (lines: number): string => s.tally[Math.min(lines, 4)]
 
 const inkOf = (t: Side) => (t === 'you' ? 'var(--ink)' : 'var(--ink-black)')
 const halo = { stroke: 'var(--paper)', strokeWidth: 6, strokeLinejoin: 'round', paintOrder: 'stroke' } as const
+const PAPER_BOX = 'url(#fb-paper)' // a paper box behind the text: the halo alone leaves the halfway line showing between letters
 
 // The pitch in ballpoint, ruled across both pages: border, halfway line on the spine, centre circle and spot, D-boxes, goals.
 const Pitch = memo(function Pitch({ seed }: { seed: number }) {
@@ -145,7 +146,7 @@ export function Football(props: GameProps) {
   return <Match key={round} {...props} onAgain={() => setRound((r) => r + 1)} />
 }
 
-function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => void }) {
+function Match({ name, onBest, onExit, onAgain, onPlaying }: GameProps & { onAgain: () => void }) {
   const layer = useContext(ResultLayer)
   const reduce = useReducedMotion()
   const tall = usePortrait()
@@ -163,6 +164,7 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
   const press = useRef<{ at: Point; id: number } | null>(null)
 
   const [phase, setPhase] = useState<Phase>('setup')
+  useEffect(() => onPlaying?.(phase === 'play'), [phase]) // onPlaying is a new arrow each render: keep it out of the deps
   const [target, setTarget] = useState<Target>(1)
   const [m, setM] = useState<FootballMatch | null>(null)
   const [seed, setSeed] = useState(0)
@@ -173,6 +175,7 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
   const [kind, setKind] = useState<Kind | null>(null)
   const [pulse, setPulse] = useState<{ at: Point; key: number } | null>(null)
   const [bad, setBad] = useState<{ at: Point; key: number } | null>(null)
+  const [crashed, setCrashed] = useState(false)
 
   useEffect(() => {
     alive.current = true
@@ -276,7 +279,12 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
     setPhase('done')
   }
   const start = (kickoff: Side) => {
-    run(kickoff).catch((err) => { console.error('football failed', err); onExit() }) // a throw drops back to the index, not a frozen page
+    run(kickoff).catch((err) => { // a throw says so and offers a new match, not a frozen page
+      console.error('football failed', err)
+      say('done')
+      setCrashed(true)
+      setPhase('done')
+    })
   }
 
   const local = (e: { clientX: number; clientY: number }): Point => toSvg(pitch.current!, e.clientX, e.clientY) // pitch units, turned or not
@@ -324,7 +332,7 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
   const cancel = () => { press.current = null; showAim(null) }
 
   const scoreLine = m && (
-    <text x={page.W / 2} y={32} textAnchor="middle" fontSize={24} fontFamily={ATMA} fill="var(--ink)" {...halo} data-score={`${m.score.you}-${m.score.cpu}`}>
+    <text x={page.W / 2} y={32} textAnchor="middle" fontSize={24} fontFamily={ATMA} fill="var(--ink)" {...halo} filter={PAPER_BOX} data-score={`${m.score.you}-${m.score.cpu}`}>
       {name ? <tspan fontFamily="'Patrick Hand', 'Atma', sans-serif">{name}</tspan> : <tspan>{c.you}</tspan>}
       <tspan> {bn(m.score.you)} – {bn(m.score.cpu)} </tspan>
       <tspan fill="var(--ink-black)">{c.cpu}</tspan>
@@ -341,6 +349,7 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
     <>
       <Page ref={svg} width={page.W} height={page.H}>
         <title>{s.pitch}</title>
+        <filter id="fb-paper" x={0} y={0} width={1} height={1}><feFlood floodColor="var(--paper)" /><feComposite in="SourceGraphic" /></filter>
         {!tall && <line x1={W / 2} x2={W / 2} y1={0} y2={H} stroke="var(--shade)" strokeWidth={3} />}
         <g ref={pitch} transform={tall ? TURN : undefined}>
           {m && <Pitch seed={seed} />}
@@ -362,8 +371,8 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
           </text>
         )}
         {scoreLine}
-        {m?.phase === 'placement' && step !== 'draw' && (
-          <text x={page.W / 2} y={tall ? 152 : 60} textAnchor="middle" fontSize={18} fontFamily={ATMA} fill="var(--ink)" opacity={0.8}
+        {m?.phase === 'placement' && step !== 'draw' && ( // over the half you attack on a spread: centred, the halfway line ran through it
+          <text x={tall ? page.W / 2 : (3 * W) / 4} y={tall ? 152 : 60} textAnchor="middle" fontSize={18} fontFamily={ATMA} fill="var(--ink)" opacity={0.8}
             {...halo} strokeWidth={4} aria-hidden="true" data-hint>{s.hint}</text>
         )}
         {shout && (
@@ -374,7 +383,7 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
         )}
         {phase === 'play' && prompt && step !== 'shout' && step !== 'pass' && (
           <text x={page.W / 2} y={page.H - 16} textAnchor="middle" fontSize={20} fontFamily={ATMA} fill={step === 'place' && bad ? 'var(--stamp)' : 'var(--ink)'}
-            {...halo} aria-hidden="true">{prompt}</text>
+            {...halo} filter={PAPER_BOX} aria-hidden="true">{prompt}</text>
         )}
         {(step === 'place' || step === 'aim') && (
           <rect className="fb-input" width={page.W} height={page.H} fill="transparent"
@@ -406,6 +415,19 @@ function Match({ name, onBest, onExit, onAgain }: GameProps & { onAgain: () => v
                 <button type="button" className="btn primary" onClick={() => start(phase === 'toss' ? 'you' : 'cpu')}>{c.start}</button>
               </>
             )}
+          </div>
+        </div>,
+        layer,
+      )}
+
+      {layer && crashed && createPortal(
+        <div className="ck-setup">
+          <div ref={panel} className="ck-panel" role="alert">
+            <p>{s.crashed}</p>
+            <div className="ck-choices">
+              <button type="button" className="btn primary" onClick={onAgain}>{strings.buttons.again}</button>
+              <button type="button" className="btn" onClick={onExit}>{strings.buttons.toIndex}</button>
+            </div>
           </div>
         </div>,
         layer,

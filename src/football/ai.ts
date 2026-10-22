@@ -1,5 +1,5 @@
 import { dist, type Point } from '../geom'
-import { makeRng } from '../rng'
+import { gaussian, makeRng } from '../rng'
 import { applyWobble, type FootballMatch } from './match'
 import { DBOX, H, MAX_LEN, W, resolvePass, shotEnd, validPlacement, type PassResult } from './rules'
 
@@ -50,6 +50,10 @@ function score(r: PassResult, from: Point, lastLine: boolean, counts: boolean): 
 // so it prefers lines that still work when they land a little off.
 const WOBBLES = [{ angle: 0, length: 1 }, ...Array.from({ length: 11 }, (_, i, r = makeRng(7 + i)) => applyWobble(r, 0, 1))]
 
+// On top of the shared hand wobble the cpu aims worse than it thinks: a play-test saw it score on every
+// possession with long passes across the pitch. Tuned in a sim against a human who aims with the wobble and overhits.
+export const CPU_AIM = 0.2 // rad: a realistic human wins about half of first-to-3; the cpu scores on about 1 possession in 10
+
 export function aiPass(rng: () => number, m: FootballMatch): { angle: number; length: number } {
   const from = { x: m.ball.x, y: m.ball.y }
   let best = -Infinity
@@ -66,5 +70,6 @@ export function aiPass(rng: () => number, m: FootballMatch): { angle: number; le
       if (s === best) picks.push({ angle, length })
     }
   }
-  return picks[Math.floor(rng() * picks.length)]
+  const p = picks[Math.floor(rng() * picks.length)]
+  return { angle: p.angle + gaussian(rng, CPU_AIM), length: p.length }
 }
